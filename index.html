@@ -146,7 +146,7 @@ body {
 }
 
 .nav-left { display: flex; align-items: center; justify-content: flex-start; }
-.nav-right { display: flex; align-items: center; justify-content: flex-end; }
+.nav-right { display: flex; align-items: center; justify-content: flex-end; visibility: hidden; }
 
 .hamburger {
   width: 36px; height: 36px;
@@ -165,9 +165,18 @@ body {
 .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
 .nav-center {
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: row;
   align-items: center; justify-content: center;
-  gap: 2px;
+  gap: 14px;
+}
+.nav-logo-img {
+  height: 36px; width: auto;
+  object-fit: contain;
+  /* ถ้าไม่มีรูปจะซ่อนอัตโนมัติ */
+}
+.nav-logo-img[src="logo.png"] { display: block; }
+.nav-titles {
+  display: flex; flex-direction: column; gap: 2px;
 }
 .nav-title {
   font-family: var(--mono);
@@ -533,8 +542,16 @@ body {
     </button>
   </div>
   <div class="nav-center">
-    <div class="nav-title">VONNIECOMPANY_WIKI</div>
-    <div class="nav-subtitle">Personal Knowledge Base · Est. 2026</div>
+    <!--
+      วิธีใส่ logo:
+      1. วางไฟล์รูปชื่อ logo.png ในโฟลเดอร์เดียวกับ index.html
+      2. รูปจะขึ้นข้างๆ ชื่อเว็บอัตโนมัติ
+    -->
+    <img class="nav-logo-img" src="logo.png" alt="logo" onerror="this.style.display='none'">
+    <div class="nav-titles">
+      <div class="nav-title">VONNIECOMPANY_WIKI</div>
+      <div class="nav-subtitle">Personal Knowledge Base · Est. 2026</div>
+    </div>
   </div>
   <div class="nav-right">
     <!-- วิธีใส่รูป logo ของคุณ:
@@ -597,9 +614,9 @@ body {
     </div>
   </div>
 
-  <!-- ROW 2: Projects + Skills -->
-  <div class="grid-equal">
-    <div class="wiki-card">
+  <!-- ROW 2: Projects only -->
+  <div style="margin-bottom:14px;">
+    <div class="wiki-card" style="animation:cardIn .4s ease .15s both;">
       <div class="wiki-card-header">Projects</div>
       <div class="wiki-card-body">
         <div class="project-entry">
@@ -609,29 +626,6 @@ body {
             <p class="proj-desc">HTML/CSS · Personal portfolio wiki</p>
           </div>
           <span class="proj-badge badge-wip">WIP</span>
-        </div>
-      </div>
-    </div>
-    <div class="wiki-card">
-      <div class="wiki-card-header">Skills</div>
-      <div class="wiki-card-body">
-        <div class="skill-group">
-          <p class="skill-group-name">Frontend</p>
-          <div class="skill-chips">
-            <span class="skill-chip">React</span><span class="skill-chip">TypeScript</span><span class="skill-chip">Tailwind</span><span class="skill-chip">Vite</span>
-          </div>
-        </div>
-        <div class="skill-group">
-          <p class="skill-group-name">Backend / Data</p>
-          <div class="skill-chips">
-            <span class="skill-chip">Python</span><span class="skill-chip">FastAPI</span><span class="skill-chip">Pandas</span><span class="skill-chip">SQL</span>
-          </div>
-        </div>
-        <div class="skill-group">
-          <p class="skill-group-name">Tools</p>
-          <div class="skill-chips">
-            <span class="skill-chip">Git</span><span class="skill-chip">Figma</span><span class="skill-chip">VS Code</span>
-          </div>
         </div>
       </div>
     </div>
@@ -649,7 +643,7 @@ body {
       <div class="social-row">
         <div class="social-icon"><svg width="14" height="14" fill="none" stroke="var(--cyan)" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
         <span class="social-name">Email</span>
-        <span class="social-handle">mcheuxchang@gmail.com</span>
+        <span class="social-handle"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="91fcf2f9f4e4e9f2f9f0fff6d1f6fcf0f8fdbff2fefc">[email&#160;protected]</a></span>
       </div>
     </div>
   </div>
@@ -664,7 +658,7 @@ body {
 
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // Loader with counter
 (function() {
   var pct = document.getElementById('loader-pct');
@@ -693,10 +687,4 @@ function toggleDrawer() {
 }
 function closeDrawer() {
   document.getElementById('drawer').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
-  document.getElementById('hamburger').classList.remove('open');
-}
-document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDrawer(); });
-</script>
-</body>
-</html>
+  document.getElem
