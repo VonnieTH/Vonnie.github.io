@@ -431,9 +431,6 @@ body {
   </div>
 </div>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-  <div class="loader-sub">Initializing database...</div>
-  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
-  <div class="loader-pct" id="loader-pct">0%</div>
 </div>
 
 <div id="app">
@@ -607,78 +604,44 @@ body {
 
   function setBar(v) { bar.style.width = v + '%'; pct.textContent = v + '%'; }
 
-  // collect real browser data
-  var info = {
-    'Browser':     navigator.userAgent.split(' ').pop().split('/')[0] || 'Unknown',
-    'CPU Cores':   (navigator.hardwareConcurrency || '?') + ' logical cores',
-    'RAM':         (navigator.deviceMemory ? navigator.deviceMemory + ' GB (approx)' : 'N/A'),
-    'Resolution':  screen.width + 'x' + screen.height,
-    'Timezone':    Intl.DateTimeFormat().resolvedOptions().timeZone,
-    'Language':    navigator.language,
-    'Network':     (navigator.connection ? navigator.connection.effectiveType || '?' : 'N/A'),
-    'Platform':    navigator.platform || 'Unknown'
-  };
-
-  var keys = Object.keys(info);
+  // scan steps - no user data displayed
+  var scanSteps = [
+    'Checking system integrity...',
+    'Scanning memory segments...',
+    'Verifying kernel modules...',
+    'Analyzing network signatures...',
+    'Running antivirus engine...',
+    'Checking browser environment...',
+    'Validating session tokens...',
+    'Finalizing security check...'
+  ];
   var i = 0;
 
-  function addRow(label, value, cb) {
+  function addRow(label, cb) {
     var row  = document.createElement('div'); row.className = 'ld-scan-row';
     var dot  = document.createElement('div'); dot.className = 'ld-scan-dot';
-    var lbl  = document.createElement('span'); lbl.className = 'ld-scan-label'; lbl.textContent = '[SCAN] ' + label + '...';
+    var lbl  = document.createElement('span'); lbl.className = 'ld-scan-label'; lbl.textContent = '[SCAN] ' + label;
     var val  = document.createElement('span'); val.className = 'ld-scan-val'; val.textContent = '';
     row.appendChild(dot); row.appendChild(lbl); row.appendChild(val);
     rows.appendChild(row);
-    // reveal value after short delay
     setTimeout(function() {
-      val.textContent = value;
       dot.classList.add('ok');
-      lbl.textContent = '[OK]   ' + label;
+      lbl.textContent = '[OK]   ' + label.replace('...','');
+      val.textContent = 'CLEAR';
       if (cb) cb();
-    }, 350);
+    }, 380);
   }
 
   function scanNext() {
-    if (i >= keys.length) {
+    if (i >= scanSteps.length) {
       setBar(85);
       setTimeout(showCaptcha, 400);
       return;
     }
-    var key = keys[i]; i++;
-    setBar(Math.round((i / keys.length) * 80));
-    addRow(key, info[key], function() { setTimeout(scanNext, 180); });
+    setBar(Math.round((i / scanSteps.length) * 80));
+    addRow(scanSteps[i], function() { setTimeout(scanNext, 160); });
+    i++;
   }
-
-  function showCaptcha() {
-    var box = document.getElementById('ld-captcha');
-    box.classList.add('show');
-    // render reCAPTCHA
-    if (window.grecaptcha) {
-      renderCaptcha();
-    } else {
-      // wait for script to load
-      var checkGr = setInterval(function() {
-        if (window.grecaptcha) { clearInterval(checkGr); renderCaptcha(); }
-      }, 200);
-    }
-  }
-
-  function renderCaptcha() {
-    grecaptcha.render('recaptcha-box', {
-      sitekey: '6LdEz58sAAAAAKArp6E4icYsTU7kfLsgHilK32cN',
-      theme: 'dark',
-      callback: onCaptchaPass
-      
-    });
-  }
-
-  window.onCaptchaPass = function() {
-    setBar(100);
-    setTimeout(function() {
-      document.getElementById('loader').classList.add('hidden');
-      document.getElementById('app').classList.add('visible');
-    }, 600);
-  };
 
   setTimeout(scanNext, 400);
 })();
