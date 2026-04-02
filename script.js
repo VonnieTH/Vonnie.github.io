@@ -1,43 +1,41 @@
 var SOCIALS = [
-    { name:"Vonnie_Channel",  color:"var(--cyan)",     handle:"YouTube",  icon:"fa-brands fa-youtube",   url:"https://www.youtube.com/@Vonnie_Channel"    },
-    { name:"Vonnie Studio",  color:"var(--purple)",   handle:"Discord",  icon:"fa-brands fa-discord",   url:"https://discord.gg/fntGjBaVZ4"              },
-    { name:"NoBuy1926",       color:"#FF4500",         handle:"Reddit",   icon:"fa-brands fa-reddit",    url:"https://www.reddit.com/user/NoBuy1926/"     },
-    { name:"Vonnie_GamingTH", color:"var(--text-main)",handle:"X",        icon:"fa-brands fa-x-twitter", url:"https://x.com/Vonnie_GamingTH"              }
-  ];
-  var grid = document.getElementById("social-grid");
-  SOCIALS.forEach(function(s) {
-    var div = document.createElement('div');
-    div.className  = 'social-row';
-    div.style.cursor = 'pointer';
-    div.dataset.url  = s.url;
-    div.dataset.name = s.handle;
-    div.addEventListener('click', function(){ openLink(this.dataset.url, this.dataset.name); });
-    div.innerHTML = '<div class="social-icon"><i class="' + s.icon + '" style="font-size:14px;color:' + s.color + '"></i></div>'
-      + '<span class="social-name">' + s.name + '</span>'
-      + '<span class="social-handle">' + s.handle + '</span>';
-    grid.appendChild(div);
-  });
+  { name:"Vonnie_Channel",  color:"var(--cyan)",     handle:"YouTube",  icon:"fa-brands fa-youtube",   url:"https://www.youtube.com/@Vonnie_Channel"    },
+  { name:"Vonnie Studio",   color:"var(--purple)",   handle:"Discord",  icon:"fa-brands fa-discord",   url:"https://discord.gg/fntGjBaVZ4"              },
+  { name:"NoBuy1926",       color:"#FF4500",         handle:"Reddit",   icon:"fa-brands fa-reddit",    url:"https://www.reddit.com/user/NoBuy1926/"     },
+  { name:"Vonnie_GamingTH", color:"var(--text-main)",handle:"X",        icon:"fa-brands fa-x-twitter", url:"https://x.com/Vonnie_GamingTH"              }
+];
+var grid = document.getElementById("social-grid");
+SOCIALS.forEach(function(s) {
+  var div = document.createElement('div');
+  div.className = 'social-row';
+  div.style.cursor = 'pointer';
+  div.dataset.url  = s.url;
+  div.dataset.name = s.handle;
+  div.addEventListener('click', function(){ openLink(this.dataset.url, this.dataset.name); });
+  div.innerHTML = '<div class="social-icon"><i class="' + s.icon + '" style="font-size:14px;color:' + s.color + '"></i></div>'
+    + '<span class="social-name">' + s.name + '</span>'
+    + '<span class="social-handle">' + s.handle + '</span>';
+  grid.appendChild(div);
+});
 
-  function openLink(url, name) {
-    var modal = document.getElementById('link-modal');
-    document.getElementById('modal-url').textContent  = url;
-    document.getElementById('modal-name').textContent = name;
-    document.getElementById('modal-confirm').onclick  = function() { window.open(url, '_blank'); closeModal(); };
-    modal.classList.add('open');
-  }
-  function closeModal() {
-    document.getElementById('link-modal').classList.remove('open');
-  }
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeModal(); });
+function openLink(url, name) {
+  var modal = document.getElementById('link-modal');
+  document.getElementById('modal-url').textContent  = url;
+  document.getElementById('modal-name').textContent = name;
+  document.getElementById('modal-confirm').onclick  = function() { window.open(url, '_blank'); closeModal(); };
+  modal.classList.add('open');
+}
+function closeModal() {
+  document.getElementById('link-modal').classList.remove('open');
+}
 
 (function() {
-  var bar     = document.getElementById('ld-bar');
-  var pct     = document.getElementById('ld-pct');
-  var rows    = document.getElementById('ld-scan-rows');
-  var timeel  = document.getElementById('ld-time');
+  var bar    = document.getElementById('ld-bar');
+  var pct    = document.getElementById('ld-pct');
+  var rows   = document.getElementById('ld-scan-rows');
+  var timeel = document.getElementById('ld-time');
   var started = Date.now();
 
-  // clock
   setInterval(function() {
     var s = ((Date.now() - started) / 1000) | 0;
     timeel.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
@@ -45,7 +43,6 @@ var SOCIALS = [
 
   function setBar(v) { bar.style.width = v + '%'; pct.textContent = v + '%'; }
 
-  // anonymous security scan - no user data shown
   var scanSteps = [
     'Checking system integrity',
     'Scanning memory segments',
@@ -87,15 +84,6 @@ var SOCIALS = [
   setTimeout(scanNext, 400);
 
   function showCaptcha() {
-    // sessionStorage: skip captcha if already passed this session
-    if (sessionStorage.getItem('captcha_passed') === '1') {
-      setBar(100);
-      setTimeout(function() {
-        document.getElementById('loader').classList.add('hidden');
-        document.getElementById('app').classList.add('visible');
-      }, 300);
-      return;
-    }
     var box = document.getElementById('ld-captcha');
     box.classList.add('show');
     if (window.grecaptcha && window.grecaptcha.render) {
@@ -120,7 +108,6 @@ var SOCIALS = [
   }
 
   window.onCaptchaPass = function() {
-    sessionStorage.setItem('captcha_passed', '1');
     setBar(100);
     setTimeout(function() {
       document.getElementById('loader').classList.add('hidden');
@@ -129,6 +116,7 @@ var SOCIALS = [
   };
 
 })();
+
 function toggleDrawer() {
   var d = document.getElementById('drawer');
   var o = document.getElementById('overlay');
@@ -142,7 +130,7 @@ function closeDrawer() {
   document.getElementById('hamburger').classList.remove('open');
 }
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeDrawer();
+  if (e.key === 'Escape') { closeDrawer(); closeModal(); closeShare(); }
 });
 
 function openShare() {
@@ -166,6 +154,6 @@ function shareAction(type) {
   } else if (type === 'x') {
     window.open('https://x.com/intent/tweet?url=' + encodeURIComponent(url) + '&text=VonnieStudio+Wiki', '_blank');
   } else if (type === 'native') {
-    if (navigator.share) navigator.share({ title: 'VonnieStduio Wiki', url: url });
+    if (navigator.share) navigator.share({ title: 'VonnieStudio Wiki', url: url });
   }
 }
