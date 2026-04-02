@@ -703,6 +703,49 @@ body {
   }
 
   setTimeout(scanNext, 400);
+
+  function showCaptcha() {
+    // sessionStorage: skip captcha if already passed this session
+    if (sessionStorage.getItem('captcha_passed') === '1') {
+      setBar(100);
+      setTimeout(function() {
+        document.getElementById('loader').classList.add('hidden');
+        document.getElementById('app').classList.add('visible');
+      }, 300);
+      return;
+    }
+    var box = document.getElementById('ld-captcha');
+    box.classList.add('show');
+    if (window.grecaptcha && window.grecaptcha.render) {
+      renderCaptcha();
+    } else {
+      var t = setInterval(function() {
+        if (window.grecaptcha && window.grecaptcha.render) {
+          clearInterval(t); renderCaptcha();
+        }
+      }, 200);
+    }
+  }
+
+  function renderCaptcha() {
+    try {
+      window.grecaptcha.render('recaptcha-box', {
+        sitekey: '6LdEz58sAAAAAKArp6E4icYsTU7kfLsgHilK32cN',
+        theme: 'dark',
+        callback: function() { onCaptchaPass(); }
+      });
+    } catch(e) {}
+  }
+
+  window.onCaptchaPass = function() {
+    sessionStorage.setItem('captcha_passed', '1');
+    setBar(100);
+    setTimeout(function() {
+      document.getElementById('loader').classList.add('hidden');
+      document.getElementById('app').classList.add('visible');
+    }, 600);
+  };
+
 })();
 function toggleDrawer() {
   var d = document.getElementById('drawer');
