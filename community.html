@@ -450,7 +450,7 @@
           <div class="auth-field">
             <label class="auth-label">USERNAME</label>
             <input type="text" class="auth-input" id="regUsername" placeholder="vonnie_user" autocomplete="off" maxlength="20">
-            <span class="auth-hint">ตัวอักษร, ตัวเลข, _ เท่านั้น — สูงสุด 20 ตัว</span>
+            <span class="auth-hint">Only letters, numbers, and underscores are allowed — maximum 20 characters.</span>
           </div>
           <div class="auth-field">
             <label class="auth-label">EMAIL</label>
@@ -458,12 +458,12 @@
           </div>
           <div class="auth-field">
             <label class="auth-label">PASSWORD</label>
-            <input type="password" class="auth-input" id="regPassword" placeholder="อย่างน้อย 8 ตัวอักษร" autocomplete="new-password" minlength="8">
+            <input type="password" class="auth-input" id="regPassword" placeholder="At least 8 characters" autocomplete="new-password" minlength="8">
           </div>
           <button class="auth-btn" id="registerBtn" onclick="handleRegister()">[ CREATE ACCOUNT → ]</button>
           <div class="auth-privacy">
             <i class="fa-solid fa-shield-halved"></i>
-            เก็บแค่ username — ไม่มีชื่อจริง, ไม่มีเบอร์โทร, ไม่มี IP
+            Only the username is collected — no real name, no phone number, no IP address
           </div>
         </div>
       </div>
@@ -534,7 +534,7 @@
         </button>
         <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageSelect(event)">
         <input type="text" class="comm-input" id="commInput"
-          placeholder="พิมพ์ข้อความ... (Enter เพื่อส่ง)"
+          placeholder="Type a message... (Press Enter to send)"
           autocomplete="off" maxlength="500"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
         <button class="comm-send-btn" id="sendBtn" onclick="sendMessage()">[ SEND ]</button>
@@ -657,14 +657,14 @@ window.handleLogin = async function() {
   const password = document.getElementById('loginPassword').value;
   const btn      = document.getElementById('loginBtn');
 
-  if (!email || !password) return showError('กรอกข้อมูลให้ครบ');
+  if (!email || !password) return showError('Complete information');
 
   btn.disabled = true;
   btn.textContent = '[ CONNECTING... ]';
 
   const { data, error } = await signIn(email, password);
   if (error) {
-    showError(error.message === 'Invalid login credentials' ? 'Email หรือ Password ไม่ถูกต้อง' : error.message);
+    showError(error.message === 'Invalid login credentials' ? 'Email or Password is incorrect' : error.message);
     btn.disabled = false;
     btn.textContent = '[ LOGIN → ]';
     return;
@@ -707,7 +707,7 @@ window.handleRegister = async function() {
     return;
   }
 
-  showSuccess('✓ สมัครสำเร็จ! กรุณาตรวจสอบ Email เพื่อยืนยันบัญชี แล้วกลับมา Login');
+  showSuccess('✓ Registration successful! Please check your email to verify your account, then return to login');
   btn.disabled = false;
   btn.textContent = '[ CREATE ACCOUNT → ]';
 };
