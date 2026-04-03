@@ -8,14 +8,6 @@ var SOCIALS = [
   { name:"Vonnie_GamingTH", color:"var(--text-main)",handle:"X",        icon:"fa-brands fa-x-twitter", url:"https://x.com/Vonnie_GamingTH"              }
 ];
 
-var SKILLS = [
-  { name:"Web Development",  level:70, color:"var(--cyan)"   },
-  { name:"Python",           level:60, color:"var(--cyan)"   },
-  { name:"Machine Learning", level:40, color:"var(--gold)"   },
-  { name:"UI/UX Design",     level:65, color:"var(--purple)" },
-  { name:"Security",         level:35, color:"var(--green)"  }
-];
-
 var SEARCH_INDEX = [
   { title:"Home",         page:"home",     desc:"Welcome screen, stats, featured project, activity log" },
   { title:"About Me",     page:"about",    desc:"Profile, skills, education, interests" },
@@ -63,7 +55,6 @@ function navigate(page) {
   window.scrollTo(0, 0);
 
   // Page-specific inits
-  if (page === 'about') initSkillBars();
   if (page === 'contact') buildContactSocials();
 }
 
@@ -208,7 +199,6 @@ function closeModal() {
       navigate('home');
       buildSocialGrid('social-grid');
       setTimeout(startTypingAnimation, 400);
-      setTimeout(startCounters, 600);
       setTimeout(startGlitch, 1200);
     }, 600);
   };
@@ -265,53 +255,6 @@ function startGlitch() {
       step++;
     }, 60);
   }, 3500);
-}
-
-// ============================================================
-//  STAT COUNTERS
-// ============================================================
-function startCounters() {
-  document.querySelectorAll('.stat-num[data-count]').forEach(function(el) {
-    var target = parseInt(el.dataset.count);
-    var duration = target > 100 ? 1200 : 600;
-    var start = Date.now();
-    var iv = setInterval(function() {
-      var progress = Math.min(1, (Date.now() - start) / duration);
-      var eased = 1 - Math.pow(1 - progress, 3);
-      el.textContent = Math.round(eased * target);
-      if (progress >= 1) clearInterval(iv);
-    }, 16);
-  });
-}
-
-// ============================================================
-//  SKILL BARS
-// ============================================================
-var skillBarsBuilt = false;
-function initSkillBars() {
-  var container = document.getElementById('skill-bars');
-  if (!container || skillBarsBuilt) return;
-  skillBarsBuilt = true;
-  container.innerHTML = '';
-  SKILLS.forEach(function(skill) {
-    var wrap = document.createElement('div');
-    wrap.className = 'skill-bar-wrap';
-    wrap.innerHTML =
-      '<div class="skill-bar-top">' +
-        '<span class="skill-bar-name">' + skill.name + '</span>' +
-        '<span class="skill-bar-pct">' + skill.level + '%</span>' +
-      '</div>' +
-      '<div class="skill-bar-track">' +
-        '<div class="skill-bar-fill" data-level="' + skill.level + '" style="background:' + skill.color + ';box-shadow:0 0 8px ' + skill.color + '"></div>' +
-      '</div>';
-    container.appendChild(wrap);
-  });
-  // Animate after paint
-  setTimeout(function() {
-    container.querySelectorAll('.skill-bar-fill').forEach(function(bar) {
-      bar.style.width = bar.dataset.level + '%';
-    });
-  }, 100);
 }
 
 // ============================================================
