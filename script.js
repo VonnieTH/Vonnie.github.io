@@ -199,6 +199,7 @@ function closeModal() {
       navigate('home');
       buildSocialGrid('social-grid');
       setTimeout(startTypingAnimation, 400);
+      setTimeout(startCounters, 600);
       setTimeout(startGlitch, 1200);
     }, 600);
   };
@@ -361,3 +362,345 @@ function shareAction(type) {
     if (navigator.share) navigator.share({ title: 'VonnieStudio Wiki', url: url });
   }
 }
+
+// ============================================================
+//  LIVE CLOCK & UPTIME COUNTER
+// ============================================================
+var sessionStart = Date.now();
+
+function padZ(n) { return String(n).padStart(2, '0'); }
+
+function formatUptime(ms) {
+  var s = Math.floor(ms / 1000);
+  var h = Math.floor(s / 3600);
+  var m = Math.floor((s % 3600) / 60);
+  var sec = s % 60;
+  return padZ(h) + ':' + padZ(m) + ':' + padZ(sec);
+}
+
+function updateClocks() {
+  var now = new Date();
+  var timeStr = padZ(now.getHours()) + ':' + padZ(now.getMinutes()) + ':' + padZ(now.getSeconds());
+  var days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  var months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  var dateStr = days[now.getDay()] + ' ' + padZ(now.getDate()) + '.' + months[now.getMonth()] + '.' + now.getFullYear();
+  var uptime = formatUptime(Date.now() - sessionStart);
+
+  // Footer
+  var fc = document.getElementById('footerClock');
+  var fu = document.getElementById('footerUptime');
+  if (fc) fc.textContent = timeStr;
+  if (fu) fu.textContent = 'session ' + uptime;
+
+  // Drawer
+  var dc = document.getElementById('drawerClockTime');
+  var dd = document.getElementById('drawerClockDate');
+  var du = document.getElementById('drawerUptime');
+  if (dc) dc.textContent = timeStr;
+  if (dd) dd.textContent = dateStr;
+  if (du) du.textContent = uptime;
+}
+
+setInterval(updateClocks, 1000);
+updateClocks();
+
+// ============================================================
+//  CURSOR EFFECT — glitch trail + glow
+// ============================================================
+(function() {
+  var dot  = document.getElementById('cursorDot');
+  var ring = document.getElementById('cursorRing');
+  if (!dot || !ring) return;
+
+  // Hide on mobile/touch
+  if ('ontouchstart' in window) {
+    dot.style.display = 'none';
+    ring.style.display = 'none';
+    return;
+  }
+
+  var mx = 0, my = 0;
+  var rx = 0, ry = 0;
+  var trails = [];
+  var TRAIL_COUNT = 10;
+
+  // Create trail dots
+  for (var i = 0; i < TRAIL_COUNT; i++) {
+    var t = document.createElement('div');
+    t.className = 'cursor-trail';
+    document.body.appendChild(t);
+    trails.push({ el: t, x: 0, y: 0 });
+  }
+
+  document.addEventListener('mousemove', function(e) {
+    mx = e.clientX; my = e.clientY;
+    dot.style.left = mx + 'px';
+    dot.style.top  = my + 'px';
+  });
+
+  document.addEventListener('mousedown', function() { ring.classList.add('clicking'); });
+  document.addEventListener('mouseup',   function() { ring.classList.remove('clicking'); });
+
+  // Hide cursor outside window
+  document.addEventListener('mouseleave', function() {
+    dot.style.opacity = '0'; ring.style.opacity = '0';
+  });
+  document.addEventListener('mouseenter', function() {
+    dot.style.opacity = '1'; ring.style.opacity = '1';
+  });
+
+  var trailPositions = [];
+  for (var j = 0; j < TRAIL_COUNT; j++) trailPositions.push({ x: 0, y: 0 });
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  var glitchTimer = 0;
+  function animLoop() {
+    // Ring follows with lag
+    rx = lerp(rx, mx, 0.18);
+    ry = lerp(ry, my, 0.18);
+    ring.style.left = rx + 'px';
+    ring.style.top  = ry + 'px';
+
+    // Trail cascade
+    trailPositions[0].x = lerp(trailPositions[0].x, mx, 0.35);
+    trailPositions[0].y = lerp(trailPositions[0].y, my, 0.35);
+    for (var k = 1; k < TRAIL_COUNT; k++) {
+      trailPositions[k].x = lerp(trailPositions[k].x, trailPositions[k-1].x, 0.6);
+      trailPositions[k].y = lerp(trailPositions[k].y, trailPositions[k-1].y, 0.6);
+    }
+
+    // Glitch effect — random offset every ~60 frames
+    glitchTimer++;
+    var glitching = (glitchTimer % 80 < 3);
+
+    trails.forEach(function(tr, idx) {
+      var p = trailPositions[idx];
+      var alpha = (1 - idx / TRAIL_COUNT) * 0.6;
+      var size  = (1 - idx / TRAIL_COUNT) * 5 + 1;
+      var gx = glitching && idx < 3 ? p.x + (Math.random() - 0.5) * 12 : p.x;
+      var gy = glitching && idx < 3 ? p.y + (Math.random() - 0.5) * 12 : p.y;
+      tr.el.style.left = gx + 'px';
+      tr.el.style.top  = gy + 'px';
+      tr.el.style.width  = size + 'px';
+      tr.el.style.height = size + 'px';
+      tr.el.style.opacity = alpha;
+      // Alternate cyan/purple on glitch
+      tr.el.style.background = (glitching && idx < 2) ? '#9b6dff' : 'rgba(0,212,255,0.8)';
+      tr.el.style.boxShadow  = (glitching && idx < 2) ? '0 0 6px #9b6dff' : '0 0 4px rgba(0,212,255,.6)';
+    });
+
+    requestAnimationFrame(animLoop);
+  }
+  requestAnimationFrame(animLoop);
+})();
+
+// ============================================================
+//  KONAMI CODE EASTER EGG
+// ============================================================
+(function() {
+  var KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  var idx = 0;
+  var unlocked = false;
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === KONAMI[idx]) {
+      idx++;
+      if (idx === KONAMI.length) {
+        idx = 0;
+        if (!unlocked) {
+          unlocked = true;
+          showKonamiToast();
+          // Show secret nav link
+          var link = document.getElementById('secretDrawerLink');
+          if (link) link.style.display = '';
+        }
+        navigate('secret');
+        initSecretTerminal();
+      }
+    } else {
+      idx = (e.key === KONAMI[0]) ? 1 : 0;
+    }
+  });
+
+  function showKonamiToast() {
+    var toast = document.getElementById('konamiToast');
+    if (!toast) return;
+    toast.classList.add('show');
+    setTimeout(function() { toast.classList.remove('show'); }, 3000);
+  }
+})();
+
+// ============================================================
+//  SECRET TERMINAL
+// ============================================================
+var terminalHistory = [];
+var terminalHistIdx = -1;
+var terminalBooted = false;
+
+var TERMINAL_COMMANDS = {
+  help: function() {
+    return [
+      { text: '// AVAILABLE COMMANDS:', cls: 'line-cyan' },
+      { text: '  help        — show this message' },
+      { text: '  whoami      — identity check' },
+      { text: '  ls          — list files' },
+      { text: '  cat secrets — read classified file' },
+      { text: '  skills      — skill matrix' },
+      { text: '  matrix      — enter the matrix' },
+      { text: '  clear       — clear terminal' },
+      { text: '  exit        — return to home' },
+    ];
+  },
+  whoami: function() {
+    return [
+      { text: 'USER: Vonnie Ellipse', cls: 'line-cyan' },
+      { text: 'ROLE: Computer Engineering Student' },
+      { text: 'LOC:  Thailand (ICT UTC+7)' },
+      { text: 'CLEARANCE_LEVEL: ██████ [REDACTED]', cls: 'line-gold' },
+      { text: 'STATUS: You found the secret page. Congratulations.', cls: 'line-gold' },
+    ];
+  },
+  ls: function() {
+    return [
+      { text: 'drwxr-xr-x  projects/', cls: 'line-cyan' },
+      { text: 'drwxr-xr-x  skills/' },
+      { text: '-rw-r-----  secrets.dat', cls: 'line-gold' },
+      { text: '-rw-r--r--  README.md' },
+      { text: '-rwxr-xr-x  vonniestudio_wiki.exe', cls: 'line-cyan' },
+    ];
+  },
+  'cat secrets': function() {
+    return [
+      { text: '// DECRYPTING secrets.dat...', cls: 'line-dim' },
+      { text: '' },
+      { text: '[SECRET_01] This wiki was built from scratch in raw HTML/CSS/JS.', cls: 'line-gold' },
+      { text: '[SECRET_02] The FSP logo is the crest of a fictional space federation.' },
+      { text: '[SECRET_03] The Konami code has been a thing since 1986. Classic.', cls: 'line-purple' },
+      { text: '[SECRET_04] There may be more Easter eggs hidden in this wiki... 👀', cls: 'line-gold' },
+    ];
+  },
+  skills: function() {
+    return [
+      { text: '// SKILL_MATRIX.DAT', cls: 'line-cyan' },
+    ].concat(SKILLS.map(function(s) {
+      var bar = '[' + '█'.repeat(Math.round(s.level / 10)) + '░'.repeat(10 - Math.round(s.level / 10)) + ']';
+      return { text: '  ' + (s.name + '          ').slice(0,18) + bar + ' ' + s.level + '%' };
+    }));
+  },
+  matrix: function() {
+    return [
+      { text: '// INITIATING MATRIX PROTOCOL...', cls: 'line-green' },
+      { text: '01001000 01100101 01101100 01101100 01101111', cls: 'line-dim' },
+      { text: '00101100 00100000 01001110 01100101 01101111', cls: 'line-dim' },
+      { text: '// Translation: "Hello, Neo"', cls: 'line-cyan' },
+      { text: '// There is no spoon.', cls: 'line-gold' },
+    ];
+  },
+  clear: function() { return null; /* special */ },
+  exit: function() {
+    setTimeout(function() { navigate('home'); }, 300);
+    return [{ text: '// Returning to home...', cls: 'line-dim' }];
+  }
+};
+
+function initSecretTerminal() {
+  if (terminalBooted) return;
+  terminalBooted = true;
+  var out = document.getElementById('secretOutput');
+  if (!out) return;
+  var bootLines = [
+    { text: '// VONNIE_TERMINAL v1.0 — KONAMI ACCESS GRANTED', cls: 'line-cyan', delay: 0 },
+    { text: '// Initializing secure shell...', cls: 'line-dim', delay: 200 },
+    { text: '// Connection established. Welcome, operator.', cls: '', delay: 400 },
+    { text: '// Type "help" to see available commands.', cls: 'line-gold', delay: 600 },
+    { text: '', delay: 700 },
+  ];
+  bootLines.forEach(function(l) {
+    setTimeout(function() { appendTerminalLine(l.text, l.cls); }, l.delay);
+  });
+  setTimeout(function() {
+    var inp = document.getElementById('secretInput');
+    if (inp) inp.focus();
+  }, 800);
+}
+
+function appendTerminalLine(text, cls) {
+  var out = document.getElementById('secretOutput');
+  if (!out) return;
+  var line = document.createElement('div');
+  line.textContent = text;
+  if (cls) line.className = cls;
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+}
+
+function handleTerminalInput(e) {
+  var inp = document.getElementById('secretInput');
+  if (!inp) return;
+
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (terminalHistIdx < terminalHistory.length - 1) {
+      terminalHistIdx++;
+      inp.value = terminalHistory[terminalHistory.length - 1 - terminalHistIdx] || '';
+    }
+    return;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (terminalHistIdx > 0) {
+      terminalHistIdx--;
+      inp.value = terminalHistory[terminalHistory.length - 1 - terminalHistIdx] || '';
+    } else {
+      terminalHistIdx = -1;
+      inp.value = '';
+    }
+    return;
+  }
+
+  if (e.key !== 'Enter') return;
+  var cmd = inp.value.trim();
+  inp.value = '';
+  terminalHistIdx = -1;
+  if (!cmd) return;
+
+  terminalHistory.push(cmd);
+  appendTerminalLine('root@vonnie:~$ ' + cmd, 'line-dim');
+
+  if (cmd === 'clear') {
+    var out = document.getElementById('secretOutput');
+    if (out) out.innerHTML = '';
+    return;
+  }
+
+  var fn = TERMINAL_COMMANDS[cmd];
+  if (fn) {
+    var lines = fn();
+    if (lines) lines.forEach(function(l) { appendTerminalLine(l.text, l.cls || ''); });
+  } else {
+    appendTerminalLine('command not found: ' + cmd + ' (try "help")', 'line-dim');
+  }
+}
+
+// Patch navigate() to handle secret page
+var _origNavigate = navigate;
+navigate = function(page) {
+  var secretPage = document.getElementById('page-secret');
+  if (page === 'secret') {
+    document.querySelectorAll('.page').forEach(function(el) { el.classList.add('hidden'); });
+    if (secretPage) { secretPage.classList.remove('hidden'); secretPage.classList.add('show'); }
+    document.querySelectorAll('.drawer-link').forEach(function(a) {
+      a.classList.toggle('active', a.dataset.page === 'secret');
+    });
+    currentPage = 'secret';
+    window.scrollTo(0, 0);
+    setTimeout(function() {
+      var inp = document.getElementById('secretInput');
+      if (inp) inp.focus();
+    }, 200);
+    return;
+  }
+  if (secretPage) { secretPage.classList.add('hidden'); secretPage.classList.remove('show'); }
+  _origNavigate(page);
+};
