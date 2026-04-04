@@ -112,6 +112,20 @@
 .msg-action-btn:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-dim);}
 .msg-action-btn.del:hover{border-color:#ff6b6b;color:#ff6b6b;background:rgba(255,107,107,.08);}
 
+/* ======= REACTIONS ======= */
+.msg-reactions{display:flex;flex-wrap:wrap;gap:4px;margin-left:36px;margin-top:4px;min-height:4px;}
+.reaction-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid rgba(0,212,255,.2);background:rgba(0,212,255,.04);cursor:pointer;border-radius:20px;font-family:var(--mono);font-size:10px;color:var(--text-sub);transition:all .15s;line-height:1.4;}
+.reaction-pill:hover{border-color:var(--cyan);background:rgba(0,212,255,.12);}
+.reaction-pill.mine{border-color:rgba(0,212,255,.6);background:rgba(0,212,255,.14);color:var(--cyan);}
+.reaction-emoji{font-size:14px;line-height:1;}
+.reaction-count{font-size:10px;}
+
+/* Reaction mini-picker (popup on hover over react button) */
+.react-mini-picker{position:fixed;z-index:8000;background:var(--bg-card);border:1px solid var(--cyan-border);box-shadow:0 4px 20px rgba(0,0,0,.7);padding:6px 8px;display:none;gap:2px;flex-wrap:wrap;width:220px;animation:fadeUp .12s ease both;}
+.react-mini-picker.open{display:flex;}
+.react-mini-picker-emoji{background:none;border:none;font-size:20px;cursor:pointer;padding:4px 5px;border-radius:4px;line-height:1;transition:background .1s;}
+.react-mini-picker-emoji:hover{background:rgba(0,212,255,.15);transform:scale(1.2);}
+
 /* Reply quote */
 .reply-quote{margin-left:36px;margin-bottom:2px;display:flex;gap:6px;align-items:flex-start;}
 .reply-quote-bar{width:2px;background:rgba(0,212,255,.4);flex-shrink:0;margin-top:2px;}
@@ -414,6 +428,9 @@
   <img id="lightboxImg" src="" alt="">
 </div>
 
+<!-- REACTION MINI PICKER -->
+<div class="react-mini-picker" id="reactMiniPicker" onclick="event.stopPropagation()"></div>
+
 <!-- PROFILE VIEW -->
 <div class="pview-overlay" id="profileViewModal" onclick="if(event.target===this)closeProfileView()">
   <div class="pview-box">
@@ -562,6 +579,7 @@ let selectedAvatarFile = null;
 let serverStart     = Date.now();
 let replyTo         = null;
 let viewingUserId   = null;
+let reactPickerMsgId = null;
 
 // ============================================================
 //  INIT
@@ -786,6 +804,7 @@ async function loadMessages() {
     container.innerHTML=`<div class="comm-empty" id="commEmpty"><i class="fa-solid fa-terminal" style="font-size:20px;color:rgba(0,212,255,.2);"></i><span>// No messages yet — be the first!</span></div>`;
     return;
   }
+  const msgIds=data.map(m=>m.id);
   const userIds=[...new Set(data.map(m=>m.user_id).filter(Boolean))];
   const {data:profiles}=await supabase.from('profiles').select('id,username,avatar_color,avatar_url').in('id',userIds);
   const profileMap={};
@@ -795,8 +814,14 @@ async function loadMessages() {
   let badgeMap={};
   try {
     const {data:allBadges}=await supabase.from('user_badges').select('user_id,badge_id').in('user_id',userIds);
-    const badgeMap = {};
     (allBadges||[]).forEach(b=>{if(!badgeMap[b.user_id])badgeMap[b.user_id]=[];badgeMap[b.user_id].push(b.badge_id);});
+  } catch(e){}
+
+  // Reactions
+  let reactionMap={};
+  try {
+    const {data:allRx}=await supabase.from('reactions').select('*').in('message_id',msgIds);
+    (allRx||[]).forEach(r=>{if(!reactionMap[r.message_id])reactionMap[r.message_id]=[];reactionMap[r.message_id].push(r);});
   } catch(e){}
 
   // Replies
@@ -812,6 +837,7 @@ async function loadMessages() {
   data.forEach(msg=>{
     msg.profiles=profileMap[msg.user_id]||null;
     msg.userBadges=badgeMap[msg.user_id]||[];
+    msg.reactions=reactionMap[msg.id]||[];
     msg.replyMsg=replyMap[msg.reply_to]||null;
     msg.replyProf=msg.replyMsg?(profileMap[msg.replyMsg.user_id]||null):null;
     renderMessage(msg);
@@ -850,7 +876,8 @@ function renderMessage(msg) {
     replyHtml=`<div class="reply-quote"><div class="reply-quote-bar"></div><div class="reply-quote-content"><span class="reply-quote-user">${escHtml(rUser)}</span>${rText}</div></div>`;
   }
 
-  const safeContent = escHtml(msg.content||'').replace(/`/g,'\\`');
+  const safeContent=escHtml(msg.content||'').replace(/`/g,'\\`');
+  const reactBtn=`<button class="msg-action-btn" onclick="openReactPicker(event,'${msg.id}')">😊 React</button>`;
   const replyBtn=`<button class="msg-action-btn" onclick="startReply('${msg.id}','${escHtml(username)}',\`${safeContent}\`)">↩ Reply</button>`;
   const delBtn=isOwn?`<button class="msg-action-btn del" onclick="deleteMessage('${msg.id}')">DEL</button>`:'';
 
@@ -859,12 +886,39 @@ function renderMessage(msg) {
     <span class="msg-username" onclick="viewProfile('${msg.user_id}')">${escHtml(username)}</span>
     <span class="msg-time">${time}</span>
     <div class="msg-badges">${badgePills(msg.userBadges)}</div>
-    <div class="msg-actions">${replyBtn}${delBtn}</div>
+    <div class="msg-actions">${reactBtn}${replyBtn}${delBtn}</div>
   </div>`;
   if(msg.content) html+=`<div class="msg-bubble${isOwn?' own':''}">${formatText(msg.content)}</div>`;
   if(msg.image_url) html+=`<img class="msg-img" src="${msg.image_url}" alt="image" onclick="openLightbox('${msg.image_url}')">`;
+  // Reactions area
+  html+=`<div class="msg-reactions" id="reactions-${msg.id}"></div>`;
   group.innerHTML=html;
   container.appendChild(group);
+  // Render reaction pills
+  renderReactionPills(msg.id, msg.reactions||[]);
+}
+
+// -------------------------------------------------------
+function renderReactionPills(msgId, reactions) {
+  const el=document.getElementById('reactions-'+msgId);
+  if(!el) return;
+  // Group by emoji
+  const grouped={};
+  reactions.forEach(r=>{
+    if(!grouped[r.emoji]) grouped[r.emoji]={count:0,users:[]};
+    grouped[r.emoji].count++;
+    grouped[r.emoji].users.push(r.user_id);
+  });
+  el.innerHTML='';
+  Object.entries(grouped).forEach(([emoji,{count,users}])=>{
+    const mine=users.includes(currentUser?.id);
+    const pill=document.createElement('button');
+    pill.className='reaction-pill'+(mine?' mine':'');
+    pill.title=mine?'Click to remove your reaction':'Click to react';
+    pill.innerHTML=`<span class="reaction-emoji">${emoji}</span><span class="reaction-count">${count}</span>`;
+    pill.onclick=()=>toggleReaction(msgId,emoji);
+    el.appendChild(pill);
+  });
 }
 
 function formatText(raw){
@@ -881,7 +935,8 @@ function scrollToBottom(){const c=document.getElementById('commMessages');c.scro
 // ============================================================
 function subscribeRealtime() {
   if(realtimeSub) supabase.removeChannel(realtimeSub);
-  realtimeSub=supabase.channel('messages-'+currentRoomId)
+  realtimeSub=supabase.channel('room-rt-'+currentRoomId)
+    // New messages
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`room_id=eq.${currentRoomId}`},
       async(payload)=>{
         if(payload.new.user_id===currentUser.id) return;
@@ -897,10 +952,29 @@ function subscribeRealtime() {
             if(rm){const {data:rp}=await supabase.from('profiles').select('username').eq('id',rm.user_id).single();replyProf=rp;}
           }catch(e){}
         }
-        renderMessage({...payload.new,profiles:profile||null,userBadges:(badges||[]).map(b=>b.badge_id),replyMsg,replyProf});
+        renderMessage({...payload.new,profiles:profile||null,userBadges:(badges?.data||[]).map(b=>b.badge_id),reactions:[],replyMsg,replyProf});
         scrollToBottom();
       })
+    // Reaction added
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'reactions'},
+      async(payload)=>{
+        const el=document.getElementById('reactions-'+payload.new.message_id);
+        if(el) await refreshReactionPills(payload.new.message_id);
+      })
+    // Reaction removed
+    .on('postgres_changes',{event:'DELETE',schema:'public',table:'reactions'},
+      async(payload)=>{
+        const el=document.getElementById('reactions-'+payload.old.message_id);
+        if(el) await refreshReactionPills(payload.old.message_id);
+      })
     .subscribe();
+}
+
+async function refreshReactionPills(msgId){
+  try{
+    const {data}=await supabase.from('reactions').select('*').eq('message_id',msgId);
+    renderReactionPills(msgId,data||[]);
+  }catch(e){}
 }
 
 // ============================================================
@@ -938,7 +1012,7 @@ window.sendMessage = async function() {
         if(rm){const {data:rp}=await supabase.from('profiles').select('username').eq('id',rm.user_id).single();replyProf=rp;}
       }catch(e){}
     }
-    renderMessage({...inserted,profiles:currentProfile,userBadges:badges.map(b=>b.badge_id),replyMsg,replyProf});
+    renderMessage({...inserted,profiles:currentProfile,userBadges:badges.map(b=>b.badge_id),reactions:[],replyMsg,replyProf});
     scrollToBottom();
   }
   input.value=''; input.style.height='auto';
@@ -951,6 +1025,52 @@ window.deleteMessage=async function(id){
   await supabase.from('messages').delete().eq('id',id);
   const el=document.querySelector(`[data-msg-id="${id}"]`);
   if(el) el.remove();
+};
+
+// ============================================================
+//  REACTIONS
+// ============================================================
+const REACT_QUICK=['👍','❤️','😂','😮','😢','🔥','🎉','💯','👀','🤔','💀','✅'];
+
+window.openReactPicker=function(e,msgId){
+  e.stopPropagation();
+  reactPickerMsgId=msgId;
+  const picker=document.getElementById('reactMiniPicker');
+  picker.innerHTML='';
+  REACT_QUICK.forEach(em=>{
+    const btn=document.createElement('button');
+    btn.className='react-mini-picker-emoji';
+    btn.textContent=em;
+    btn.title=em;
+    btn.onclick=()=>{toggleReaction(msgId,em);closeReactPicker();};
+    picker.appendChild(btn);
+  });
+  // Position
+  const rect=e.currentTarget.getBoundingClientRect();
+  let top=rect.bottom+4, left=rect.left;
+  if(left+230>window.innerWidth) left=window.innerWidth-234;
+  if(top+90>window.innerHeight) top=rect.top-94;
+  picker.style.top=top+'px'; picker.style.left=left+'px';
+  picker.classList.add('open');
+};
+
+function closeReactPicker(){
+  document.getElementById('reactMiniPicker').classList.remove('open');
+  reactPickerMsgId=null;
+}
+document.addEventListener('click',()=>closeReactPicker());
+
+window.toggleReaction=async function(msgId,emoji){
+  try{
+    const {data:existing}=await supabase.from('reactions')
+      .select('id').eq('message_id',msgId).eq('user_id',currentUser.id).eq('emoji',emoji).maybeSingle();
+    if(existing){
+      await supabase.from('reactions').delete().eq('id',existing.id);
+    } else {
+      await supabase.from('reactions').insert({message_id:msgId,user_id:currentUser.id,emoji});
+    }
+    await refreshReactionPills(msgId);
+  }catch(err){console.error('reaction error',err);}
 };
 
 // ============================================================
@@ -1195,8 +1315,10 @@ function resetAvatarUploadUI(avatarUrl){
 //  KEYBOARD
 // ============================================================
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){closeLightbox();closeProfileView();closeProfileEdit();cancelReply();
-    document.getElementById('emojiPicker').classList.remove('open');emojiPickerOpen=false;}
+  if(e.key==='Escape'){
+    closeLightbox();closeProfileView();closeProfileEdit();cancelReply();closeReactPicker();
+    document.getElementById('emojiPicker').classList.remove('open');emojiPickerOpen=false;
+  }
 });
 
 init();
