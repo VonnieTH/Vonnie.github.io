@@ -940,10 +940,9 @@ function subscribeRealtime() {
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:`room_id=eq.${currentRoomId}`},
       async(payload)=>{
         if(payload.new.user_id===currentUser.id) return;
-        const [{data:profile},{data:badges}]=await Promise.all([
-          supabase.from('profiles').select('id,username,avatar_color,avatar_url').eq('id',payload.new.user_id).single(),
-          supabase.from('user_badges').select('badge_id').eq('user_id',payload.new.user_id).catch(()=>({data:[]})),
-        ]);
+        const {data:profile}=await supabase.from('profiles').select('id,username,avatar_color,avatar_url').eq('id',payload.new.user_id).single();
+        let badgeIds=[];
+        try{const {data:b}=await supabase.from('user_badges').select('badge_id').eq('user_id',payload.new.user_id);badgeIds=(b||[]).map(x=>x.badge_id);}catch(e){}
         let replyMsg=null,replyProf=null;
         if(payload.new.reply_to){
           try{
@@ -952,7 +951,7 @@ function subscribeRealtime() {
             if(rm){const {data:rp}=await supabase.from('profiles').select('username').eq('id',rm.user_id).single();replyProf=rp;}
           }catch(e){}
         }
-        renderMessage({...payload.new,profiles:profile||null,userBadges:(badges?.data||[]).map(b=>b.badge_id),reactions:[],replyMsg,replyProf});
+        renderMessage({...payload.new,profiles:profile||null,userBadges:badgeIds,reactions:[],replyMsg,replyProf});
         scrollToBottom();
       })
     // Reaction added
@@ -1144,11 +1143,10 @@ window.closeLightbox=function(){document.getElementById('lightbox').classList.re
 window.viewProfile=async function(userId){
   viewingUserId=userId;
   const isOwn=userId===currentUser?.id;
-  const [{data:prof},{data:badges}]=await Promise.all([
-    supabase.from('profiles').select('*').eq('id',userId).single(),
-    supabase.from('user_badges').select('badge_id,granted_at').eq('user_id',userId).catch(()=>({data:[]})),
-  ]);
+  const {data:prof}=await supabase.from('profiles').select('*').eq('id',userId).single();
   if(!prof) return;
+  let badgeList=[];
+  try{const {data:b}=await supabase.from('user_badges').select('badge_id,granted_at').eq('user_id',userId);badgeList=b||[];}catch(e){}
   const color=prof.avatar_color||'#00d4ff';
   const uname=prof.username||'unknown';
   const joinDate=prof.created_at?new Date(prof.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—';
@@ -1159,7 +1157,6 @@ window.viewProfile=async function(userId){
   document.getElementById('pviewMeta').innerHTML=`<span><i class="fa-regular fa-calendar" style="color:var(--text-dim)"></i> Joined ${joinDate}</span>`;
   const badgesEl=document.getElementById('pviewBadges');
   badgesEl.innerHTML='';
-  const badgeList=badges?.data||badges||[];
   if(!badgeList.length){badgesEl.innerHTML='<div class="pview-no-badges">// No badges yet</div>';}
   else{
     badgeList.forEach(b=>{
