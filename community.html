@@ -196,60 +196,99 @@
 .lightbox-close{position:absolute;top:20px;right:24px;background:none;border:none;color:var(--text-sub);font-family:var(--mono);font-size:16px;cursor:pointer;}
 
 /* ======= PROFILE VIEW ======= */
-.pview-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.85);align-items:center;justify-content:center;}
+.pview-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.88);align-items:center;justify-content:center;}
 .pview-overlay.open{display:flex;animation:fadeUp .2s ease;}
-.pview-box{width:400px;max-width:92vw;background:var(--bg-card);border:1px solid var(--cyan-border);box-shadow:0 0 40px var(--cyan-glow);position:relative;max-height:90vh;overflow-y:auto;}
-.pview-box::before,.pview-box::after{content:"";position:absolute;width:8px;height:8px;border-color:var(--cyan);border-style:solid;pointer-events:none;}
+.pview-box{width:380px;max-width:92vw;background:var(--bg-card);border:1px solid var(--cyan-border);box-shadow:0 0 50px var(--cyan-glow);position:relative;display:flex;flex-direction:column;max-height:88vh;}
+.pview-box::before,.pview-box::after{content:"";position:absolute;width:8px;height:8px;border-color:var(--cyan);border-style:solid;pointer-events:none;z-index:2;}
 .pview-box::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}
 .pview-box::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}
-.pview-header{background:rgba(0,212,255,.07);border-bottom:1px solid rgba(0,212,255,.3);padding:8px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cyan);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;}
-.pview-close{background:none;border:none;color:var(--text-sub);font-family:var(--mono);font-size:12px;cursor:pointer;}
+/* Titlebar sticky */
+.pview-titlebar{background:rgba(0,212,255,.07);border-bottom:1px solid rgba(0,212,255,.25);padding:8px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cyan);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.pview-close{background:none;border:none;color:var(--text-sub);font-family:var(--mono);font-size:12px;cursor:pointer;transition:color .15s;}
 .pview-close:hover{color:var(--cyan);}
-.pview-banner{height:70px;position:relative;}
-.pview-avatar-wrap{position:absolute;bottom:-24px;left:20px;}
-.pview-avatar{width:56px;height:56px;border-radius:50%;border:3px solid var(--bg-card);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:20px;font-weight:700;color:#000;}
-.pview-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
-.pview-info{padding:32px 20px 16px;}
-.pview-name{font-family:var(--mono);font-size:16px;color:var(--text-main);margin-bottom:3px;}
-.pview-role{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.12em;margin-bottom:10px;}
-.pview-meta{font-family:var(--mono);font-size:10px;color:var(--text-sub);display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;}
-.pview-section-label{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.16em;padding:14px 20px 8px;border-top:1px solid rgba(0,212,255,.08);}
-.pview-badges{display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 20px;}
-.pview-badge{display:flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid;background:rgba(0,0,0,.2);font-family:var(--mono);font-size:10px;}
-.pview-badge-icon{font-size:14px;}
-.pview-badge-name{font-size:10px;letter-spacing:.06em;font-weight:700;}
-.pview-badge-desc{font-size:8px;color:var(--text-dim);margin-top:1px;}
-.pview-no-badges{font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:0 20px 20px;}
-.pview-edit-btn{display:block;width:calc(100% - 40px);margin:0 20px 20px;font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:8px;border:1px solid rgba(0,212,255,.3);background:transparent;color:var(--cyan);cursor:pointer;transition:all .15s;}
-.pview-edit-btn:hover{background:var(--cyan-dim);}
+/* Scrollable body */
+.pview-scroll{flex:1;overflow-y:auto;overflow-x:hidden;}
+.pview-scroll::-webkit-scrollbar{width:3px;}
+.pview-scroll::-webkit-scrollbar-thumb{background:rgba(0,212,255,.2);}
+/* Banner */
+.pview-banner{height:90px;width:100%;flex-shrink:0;position:relative;}
+.pview-banner-inner{position:absolute;inset:0;}
+/* Avatar hero — centered, overlapping banner */
+.pview-avatar-hero{display:flex;flex-direction:column;align-items:center;margin-top:-46px;padding:0 20px 0;position:relative;z-index:1;}
+.pview-avatar{width:88px;height:88px;border-radius:50%;border:4px solid var(--bg-card);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:28px;font-weight:700;color:#000;flex-shrink:0;box-shadow:0 0 20px rgba(0,0,0,.6);}
+.pview-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;}
+/* Info block */
+.pview-info{padding:10px 20px 0;text-align:center;}
+.pview-name{font-family:var(--mono);font-size:18px;color:var(--text-main);letter-spacing:.04em;}
+.pview-role{font-family:var(--mono);font-size:9px;color:var(--cyan);letter-spacing:.14em;margin-top:3px;text-shadow:0 0 8px var(--cyan);}
+/* Bio */
+.pview-bio{font-family:var(--mono);font-size:11px;color:var(--text-sub);line-height:1.7;text-align:center;padding:10px 20px 0;font-style:italic;}
+.pview-bio-empty{color:var(--text-dim);}
+/* Stats row */
+.pview-stats{display:flex;gap:0;margin:14px 20px 0;border:1px solid rgba(0,212,255,.12);background:rgba(0,212,255,.03);}
+.pview-stat{flex:1;padding:8px 4px;text-align:center;border-right:1px solid rgba(0,212,255,.1);}
+.pview-stat:last-child{border-right:none;}
+.pview-stat-val{font-family:var(--mono);font-size:16px;color:var(--cyan);text-shadow:0 0 8px var(--cyan);letter-spacing:.02em;}
+.pview-stat-label{font-family:var(--mono);font-size:8px;color:var(--text-dim);letter-spacing:.1em;margin-top:2px;}
+/* Level bar */
+.pview-level-wrap{margin:14px 20px 0;}
+.pview-level-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.pview-level-tag{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:.06em;}
+.pview-level-xp{font-family:var(--mono);font-size:9px;color:var(--text-dim);}
+.pview-level-track{height:6px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.15);position:relative;overflow:hidden;}
+.pview-level-fill{height:100%;background:linear-gradient(90deg,var(--cyan),#9b6dff);box-shadow:0 0 8px var(--cyan);transition:width .6s cubic-bezier(.4,0,.2,1);}
+.pview-level-sub{font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-top:3px;text-align:right;}
+/* Divider */
+.pview-divider{height:1px;background:rgba(0,212,255,.08);margin:14px 20px 0;}
+/* Section label */
+.pview-section{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.18em;padding:12px 20px 8px;}
+/* Badges */
+.pview-badges{display:flex;flex-direction:column;gap:6px;padding:0 20px;}
+.pview-badge{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid;background:rgba(0,0,0,.25);}
+.pview-badge-icon{font-size:18px;line-height:1;flex-shrink:0;}
+.pview-badge-name{font-family:var(--mono);font-size:11px;letter-spacing:.06em;font-weight:700;}
+.pview-badge-desc{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;}
+.pview-no-badges{font-family:var(--mono);font-size:10px;color:var(--text-dim);padding:0 20px;}
+/* Meta */
+.pview-meta{font-family:var(--mono);font-size:9px;color:var(--text-dim);padding:0 20px;display:flex;gap:14px;flex-wrap:wrap;}
+/* Edit button */
+.pview-edit-btn{display:block;width:calc(100% - 40px);margin:14px 20px 20px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;padding:9px;border:1px solid rgba(0,212,255,.35);background:transparent;color:var(--cyan);cursor:pointer;transition:all .15s;}
+.pview-edit-btn:hover{background:var(--cyan-dim);border-color:var(--cyan);}
 
 /* ======= PROFILE EDIT ======= */
-.pedit-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.85);align-items:center;justify-content:center;}
+.pedit-overlay{display:none;position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.88);align-items:center;justify-content:center;}
 .pedit-overlay.open{display:flex;animation:fadeUp .2s ease;}
-.pedit-box{width:380px;max-width:92vw;background:var(--bg-card);border:1px solid var(--cyan-border);box-shadow:0 0 40px var(--cyan-glow);position:relative;max-height:90vh;overflow-y:auto;}
+.pedit-box{width:400px;max-width:92vw;background:var(--bg-card);border:1px solid var(--cyan-border);box-shadow:0 0 40px var(--cyan-glow);position:relative;display:flex;flex-direction:column;max-height:90vh;}
 .pedit-box::before,.pedit-box::after{content:"";position:absolute;width:8px;height:8px;border-color:var(--cyan);border-style:solid;pointer-events:none;}
 .pedit-box::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}
 .pedit-box::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}
-.pedit-header{background:rgba(0,212,255,.07);border-bottom:1px solid rgba(0,212,255,.3);padding:8px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cyan);display:flex;justify-content:space-between;align-items:center;}
+.pedit-header{background:rgba(0,212,255,.07);border-bottom:1px solid rgba(0,212,255,.3);padding:8px 16px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cyan);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
 .pedit-close{background:none;border:none;color:var(--text-sub);font-family:var(--mono);font-size:12px;cursor:pointer;transition:color .15s;}
 .pedit-close:hover{color:var(--cyan);}
-.pedit-body{padding:20px 18px;}
+.pedit-scroll{flex:1;overflow-y:auto;padding:20px 18px;}
+.pedit-scroll::-webkit-scrollbar{width:3px;}
+.pedit-scroll::-webkit-scrollbar-thumb{background:rgba(0,212,255,.2);}
 .pedit-preview{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:12px;background:rgba(0,212,255,.03);border:1px solid rgba(0,212,255,.1);}
-.pedit-preview-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:18px;font-weight:700;color:#000;flex-shrink:0;overflow:hidden;}
+.pedit-preview-avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:20px;font-weight:700;color:#000;flex-shrink:0;overflow:hidden;}
 .pedit-preview-name{font-family:var(--mono);font-size:13px;color:var(--text-main);}
 .pedit-preview-role{font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;letter-spacing:.08em;}
-.pedit-section{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.14em;margin-bottom:10px;}
+.pedit-section{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.14em;margin-bottom:8px;margin-top:18px;}
+.pedit-section:first-of-type{margin-top:0;}
+.pedit-textarea{width:100%;background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.25);padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--text-main);outline:none;resize:vertical;min-height:60px;max-height:120px;caret-color:var(--cyan);transition:border-color .15s;box-sizing:border-box;line-height:1.6;}
+.pedit-textarea:focus{border-color:var(--cyan);}
+.pedit-textarea::placeholder{color:var(--text-dim);}
+.pedit-char{font-family:var(--mono);font-size:8px;color:var(--text-dim);text-align:right;margin-top:3px;}
 /* Avatar upload */
-.avatar-upload-zone{border:1px dashed rgba(0,212,255,.3);background:rgba(0,212,255,.03);padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:18px;}
+.avatar-upload-zone{border:1px dashed rgba(0,212,255,.3);background:rgba(0,212,255,.03);padding:20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:0;}
 .avatar-upload-zone:hover,.avatar-upload-zone.drag-over{border-color:var(--cyan);background:rgba(0,212,255,.07);}
 .avatar-upload-icon{font-size:24px;color:rgba(0,212,255,.4);margin-bottom:8px;}
 .avatar-upload-text{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:.08em;}
 .avatar-upload-sub{font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-top:4px;}
-.avatar-upload-preview{width:80px;height:80px;border-radius:50%;border:2px solid var(--cyan);overflow:hidden;margin:0 auto 12px;position:relative;}
+.avatar-upload-preview{width:80px;height:80px;border-radius:50%;border:2px solid var(--cyan);overflow:hidden;margin:0 auto 12px;}
 .avatar-upload-preview img{width:100%;height:100%;object-fit:cover;}
 .avatar-upload-change{font-family:var(--mono);font-size:9px;color:var(--cyan);background:none;border:none;cursor:pointer;margin-top:8px;letter-spacing:.08em;}
 /* Crop */
-.crop-editor{display:none;flex-direction:column;align-items:center;gap:10px;margin-bottom:18px;}
+.crop-editor{display:none;flex-direction:column;align-items:center;gap:10px;margin-top:12px;}
 .crop-editor.show{display:flex;}
 .crop-canvas-wrap{position:relative;width:240px;height:240px;border:1px solid rgba(0,212,255,.3);overflow:hidden;cursor:grab;user-select:none;flex-shrink:0;background:#000;}
 .crop-canvas-wrap:active{cursor:grabbing;}
@@ -265,7 +304,7 @@
 .crop-apply-btn:hover{background:rgba(0,212,255,.25);}
 .crop-cancel-btn{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:7px 12px;border:1px solid rgba(0,212,255,.2);background:transparent;color:var(--text-dim);cursor:pointer;}
 .crop-cancel-btn:hover{border-color:var(--cyan);color:var(--cyan);}
-.profile-save-btn{width:100%;font-family:var(--mono);font-size:10px;letter-spacing:.12em;padding:9px;border:1px solid var(--cyan);background:var(--cyan-dim);color:var(--cyan);cursor:pointer;transition:all .15s;}
+.profile-save-btn{width:100%;font-family:var(--mono);font-size:10px;letter-spacing:.12em;padding:9px;border:1px solid var(--cyan);background:var(--cyan-dim);color:var(--cyan);cursor:pointer;transition:all .15s;margin-top:18px;}
 .profile-save-btn:hover{background:rgba(0,212,255,.25);}
 .profile-save-btn:disabled{opacity:.5;cursor:not-allowed;}
 .profile-save-msg{font-family:var(--mono);font-size:9px;color:var(--green);text-align:center;height:16px;margin-top:8px;}
@@ -434,18 +473,50 @@
 <!-- PROFILE VIEW -->
 <div class="pview-overlay" id="profileViewModal" onclick="if(event.target===this)closeProfileView()">
   <div class="pview-box">
-    <div class="pview-header"><span>// USER_PROFILE.DAT</span><button class="pview-close" onclick="closeProfileView()">[ X ]</button></div>
-    <div class="pview-body">
-      <div class="pview-banner" id="pviewBanner"></div>
-      <div class="pview-avatar-wrap"><div class="pview-avatar" id="pviewAvatar">?</div></div>
+    <!-- Sticky titlebar -->
+    <div class="pview-titlebar">
+      <span>// USER_PROFILE.DAT</span>
+      <button class="pview-close" onclick="closeProfileView()">[ X ]</button>
+    </div>
+    <!-- Scrollable content -->
+    <div class="pview-scroll">
+      <!-- Banner -->
+      <div class="pview-banner"><div class="pview-banner-inner" id="pviewBanner"></div></div>
+      <!-- Avatar hero (centered, overlapping) -->
+      <div class="pview-avatar-hero">
+        <div class="pview-avatar" id="pviewAvatar">?</div>
+      </div>
+      <!-- Name + role -->
       <div class="pview-info">
         <div class="pview-name" id="pviewName">---</div>
         <div class="pview-role" id="pviewRole">// Community Member</div>
-        <div class="pview-meta" id="pviewMeta"></div>
       </div>
-      <div class="pview-section-label">// BADGES</div>
+      <!-- Bio -->
+      <div class="pview-bio" id="pviewBio"></div>
+      <!-- Stats -->
+      <div class="pview-stats" id="pviewStats">
+        <div class="pview-stat"><div class="pview-stat-val" id="pstatMsg">—</div><div class="pview-stat-label">MESSAGES</div></div>
+        <div class="pview-stat"><div class="pview-stat-val" id="pstatImg">—</div><div class="pview-stat-label">IMAGES</div></div>
+        <div class="pview-stat"><div class="pview-stat-val" id="pstatXp">—</div><div class="pview-stat-label">TOTAL XP</div></div>
+      </div>
+      <!-- Level bar -->
+      <div class="pview-level-wrap">
+        <div class="pview-level-header">
+          <span class="pview-level-tag" id="pviewLevelTag">LVL 1</span>
+          <span class="pview-level-xp" id="pviewLevelXp">0 / 100 XP</span>
+        </div>
+        <div class="pview-level-track"><div class="pview-level-fill" id="pviewLevelFill" style="width:0%"></div></div>
+        <div class="pview-level-sub" id="pviewLevelSub">// Lvl 2 unlocks at 100 XP</div>
+      </div>
+      <div class="pview-divider"></div>
+      <!-- Meta -->
+      <div class="pview-meta" id="pviewMeta"></div>
+      <div class="pview-divider"></div>
+      <!-- Badges -->
+      <div class="pview-section">// BADGES</div>
       <div class="pview-badges" id="pviewBadges"></div>
-      <button class="pview-edit-btn" id="pviewEditBtn" onclick="openProfileEdit()" style="display:none;">[ EDIT MY PROFILE ]</button>
+      <div class="pview-divider" style="margin-bottom:14px;"></div>
+      <button class="pview-edit-btn" id="pviewEditBtn" onclick="openProfileEdit()" style="display:none;">[ ✏ EDIT MY PROFILE ]</button>
     </div>
   </div>
 </div>
@@ -454,19 +525,26 @@
 <div class="pedit-overlay" id="profileEditModal" onclick="if(event.target===this)closeProfileEdit()">
   <div class="pedit-box">
     <div class="pedit-header"><span>// PROFILE_EDITOR.EXE</span><button class="pedit-close" onclick="closeProfileEdit()">[ X ]</button></div>
-    <div class="pedit-body">
+    <div class="pedit-scroll">
       <div class="pedit-preview">
         <div class="pedit-preview-avatar" id="peditPreviewAvatar">?</div>
-        <div><div style="font-family:var(--mono);font-size:13px;color:var(--text-main);" id="peditPreviewName">---</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--text-dim);margin-top:2px;">// Community Member</div></div>
+        <div>
+          <div class="pedit-preview-name" id="peditPreviewName">---</div>
+          <div class="pedit-preview-role">// Community Member</div>
+        </div>
       </div>
+
+      <div class="pedit-section">// BIO / DESCRIPTION</div>
+      <textarea class="pedit-textarea" id="peditBio" maxlength="150" placeholder="Tell the community about yourself..." oninput="document.getElementById('peditBioChar').textContent=(150-this.value.length)+' left'"></textarea>
+      <div class="pedit-char" id="peditBioChar">150 left</div>
+
       <div class="pedit-section">// AVATAR IMAGE</div>
       <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarSelect(event)">
       <div class="avatar-upload-zone" id="avatarUploadZone" onclick="document.getElementById('avatarFileInput').click()">
         <div id="avatarUploadContent">
           <div class="avatar-upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
           <div class="avatar-upload-text">Click or drag to upload</div>
-          <div class="avatar-upload-sub">PNG, JPG, GIF · max 2MB</div>
+          <div class="avatar-upload-sub">PNG, JPG, GIF · max 5MB</div>
         </div>
         <div id="avatarPreviewContent" style="display:none">
           <div class="avatar-upload-preview"><img id="avatarPreviewImg" src="" alt="preview"></div>
@@ -1138,23 +1216,73 @@ window.openLightbox=function(url){document.getElementById('lightboxImg').src=url
 window.closeLightbox=function(){document.getElementById('lightbox').classList.remove('open');};
 
 // ============================================================
+//  LEVEL SYSTEM
+// ============================================================
+const LEVEL_XP=[0,100,250,500,900,1400,2100,3000,4500,6500];
+const LEVEL_NAMES=['INITIATE','RECRUIT','MEMBER','VETERAN','EXPERT','ELITE','MASTER','LEGEND','MYTH','APEX'];
+function calcLevel(xp){
+  let lv=0;
+  for(let i=LEVEL_XP.length-1;i>=0;i--){if(xp>=LEVEL_XP[i]){lv=i;break;}}
+  const isMax=lv>=LEVEL_XP.length-1;
+  const curFloor=LEVEL_XP[lv];
+  const nextFloor=isMax?null:LEVEL_XP[lv+1];
+  const pct=isMax?100:Math.round((xp-curFloor)/(nextFloor-curFloor)*100);
+  return{level:lv+1,name:LEVEL_NAMES[lv],xp,pct,curFloor,nextFloor,isMax};
+}
+
+// ============================================================
 //  PROFILE VIEW
 // ============================================================
 window.viewProfile=async function(userId){
   viewingUserId=userId;
   const isOwn=userId===currentUser?.id;
-  const {data:prof}=await supabase.from('profiles').select('*').eq('id',userId).single();
+
+  // Fetch profile + badges + message stats in parallel
+  const [{data:prof},statsResult]=await Promise.all([
+    supabase.from('profiles').select('*').eq('id',userId).single(),
+    supabase.from('messages').select('id,image_url').eq('user_id',userId),
+  ]);
   if(!prof) return;
+
   let badgeList=[];
   try{const {data:b}=await supabase.from('user_badges').select('badge_id,granted_at').eq('user_id',userId);badgeList=b||[];}catch(e){}
+
+  const msgs=statsResult.data||[];
+  const msgCount=msgs.length;
+  const imgCount=msgs.filter(m=>m.image_url).length;
+  const xp=msgCount*10+imgCount*25;
+  const lv=calcLevel(xp);
+
   const color=prof.avatar_color||'#00d4ff';
   const uname=prof.username||'unknown';
   const joinDate=prof.created_at?new Date(prof.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—';
-  document.getElementById('pviewBanner').style.background=`linear-gradient(135deg,${color}22,${color}08)`;
+
+  // Banner
+  document.getElementById('pviewBanner').style.cssText=`background:linear-gradient(135deg,${color}30 0%,${color}08 60%,transparent 100%);height:90px;`;
+  // Avatar
   setAvatarEl(document.getElementById('pviewAvatar'),prof.avatar_url,color,uname[0].toUpperCase());
+  // Name + role
   document.getElementById('pviewName').textContent=uname;
-  document.getElementById('pviewRole').textContent=isOwn?"// That's you!":'// Community Member';
-  document.getElementById('pviewMeta').innerHTML=`<span><i class="fa-regular fa-calendar" style="color:var(--text-dim)"></i> Joined ${joinDate}</span>`;
+  document.getElementById('pviewRole').textContent=isOwn?"// ★ That's you!":'// Community Member';
+  // Bio
+  const bioEl=document.getElementById('pviewBio');
+  if(prof.bio){bioEl.textContent='"'+prof.bio+'"';bioEl.classList.remove('pview-bio-empty');}
+  else{bioEl.textContent=isOwn?'// No bio yet — click Edit to add one':'// No bio set';bioEl.classList.add('pview-bio-empty');}
+  // Stats
+  document.getElementById('pstatMsg').textContent=msgCount;
+  document.getElementById('pstatImg').textContent=imgCount;
+  document.getElementById('pstatXp').textContent=xp;
+  // Level bar
+  document.getElementById('pviewLevelTag').textContent=`LV.${lv.level} ${lv.name}`;
+  document.getElementById('pviewLevelTag').style.color=color;
+  document.getElementById('pviewLevelXp').textContent=lv.isMax?'MAX LEVEL':`${xp} / ${lv.nextFloor} XP`;
+  setTimeout(()=>{document.getElementById('pviewLevelFill').style.width=lv.pct+'%';},80);
+  document.getElementById('pviewLevelFill').style.background=`linear-gradient(90deg,${color},#9b6dff)`;
+  document.getElementById('pviewLevelFill').style.boxShadow=`0 0 8px ${color}`;
+  document.getElementById('pviewLevelSub').textContent=lv.isMax?'// Maximum level reached!':`// ${lv.pct}% to LV.${lv.level+1}`;
+  // Meta
+  document.getElementById('pviewMeta').innerHTML=`<span><i class="fa-regular fa-calendar"></i> Joined ${joinDate}</span>`;
+  // Badges
   const badgesEl=document.getElementById('pviewBadges');
   badgesEl.innerHTML='';
   if(!badgeList.length){badgesEl.innerHTML='<div class="pview-no-badges">// No badges yet</div>';}
@@ -1163,12 +1291,16 @@ window.viewProfile=async function(userId){
       const cat=BADGE_CATALOG[b.badge_id]; if(!cat) return;
       const div=document.createElement('div');
       div.className='pview-badge';
-      div.style.borderColor=cat.color+'60'; div.style.background=cat.color+'10';
+      div.style.borderColor=cat.color+'55';div.style.background=cat.color+'0d';
       div.innerHTML=`<span class="pview-badge-icon">${cat.icon}</span><div><div class="pview-badge-name" style="color:${cat.color}">${cat.label}</div><div class="pview-badge-desc">${cat.desc}</div></div>`;
       badgesEl.appendChild(div);
     });
   }
   document.getElementById('pviewEditBtn').style.display=isOwn?'block':'none';
+  // Reset scroll
+  document.querySelector('.pview-scroll').scrollTop=0;
+  // Reset level bar to 0 for animation
+  document.getElementById('pviewLevelFill').style.width='0%';
   document.getElementById('profileViewModal').classList.add('open');
 };
 window.closeProfileView=function(){document.getElementById('profileViewModal').classList.remove('open');};
@@ -1184,6 +1316,10 @@ window.openProfileEdit=function(){
   setAvatarEl(document.getElementById('peditPreviewAvatar'),currentProfile?.avatar_url||null,color,uname[0].toUpperCase());
   document.getElementById('peditPreviewName').textContent=uname;
   document.getElementById('profileSaveMsg').textContent='';
+  // Populate bio
+  const bio=currentProfile?.bio||'';
+  document.getElementById('peditBio').value=bio;
+  document.getElementById('peditBioChar').textContent=(150-bio.length)+' left';
   resetAvatarUploadUI(currentProfile?.avatar_url||null);
   initCropEvents();
   document.getElementById('profileEditModal').classList.add('open');
@@ -1196,22 +1332,32 @@ window.saveProfile=async function(){
   const btn=document.getElementById('profileSaveBtn');
   const msg=document.getElementById('profileSaveMsg');
   msg.style.color='var(--green)';
-  if(!selectedAvatarFile){msg.textContent='// Select and crop an image first';msg.style.color='var(--text-dim)';return;}
-  btn.disabled=true; btn.textContent='[ UPLOADING... ]';
-  const path=`${currentUser.id}/avatar.png`;
-  const {error:upErr}=await supabase.storage.from('avatars').upload(path,selectedAvatarFile,{upsert:true,contentType:'image/png'});
-  if(upErr){msg.textContent='// Upload error: '+upErr.message;msg.style.color='#ff6b6b';btn.disabled=false;btn.textContent='[ SAVE CHANGES ]';return;}
-  const {data:urlData}=supabase.storage.from('avatars').getPublicUrl(path);
-  const avatarUrl=urlData.publicUrl+'?v='+Date.now();
-  const {error:dbErr}=await supabase.from('profiles').update({avatar_url:avatarUrl}).eq('id',currentUser.id);
-  if(dbErr){msg.textContent='// DB error: '+dbErr.message;msg.style.color='#ff6b6b';}
-  else{
-    currentProfile={...currentProfile,avatar_url:avatarUrl};
-    updateNavAvatar();
-    selectedAvatarFile=null;
-    msg.textContent='✓ Avatar updated!';
-    if(viewingUserId===currentUser.id) viewProfile(currentUser.id);
+  const newBio=document.getElementById('peditBio').value.trim().substring(0,150);
+  btn.disabled=true; btn.textContent='[ SAVING... ]';
+
+  // Save bio first (always, even without new avatar)
+  const {error:bioErr}=await supabase.from('profiles').update({bio:newBio}).eq('id',currentUser.id);
+  if(!bioErr) currentProfile={...currentProfile,bio:newBio};
+
+  // Upload avatar if a new one was selected
+  if(selectedAvatarFile){
+    btn.textContent='[ UPLOADING... ]';
+    const path=`${currentUser.id}/avatar.png`;
+    const {error:upErr}=await supabase.storage.from('avatars').upload(path,selectedAvatarFile,{upsert:true,contentType:'image/png'});
+    if(upErr){msg.textContent='// Upload error: '+upErr.message;msg.style.color='#ff6b6b';btn.disabled=false;btn.textContent='[ SAVE CHANGES ]';return;}
+    const {data:urlData}=supabase.storage.from('avatars').getPublicUrl(path);
+    const avatarUrl=urlData.publicUrl+'?v='+Date.now();
+    const {error:dbErr}=await supabase.from('profiles').update({avatar_url:avatarUrl}).eq('id',currentUser.id);
+    if(dbErr){msg.textContent='// DB error: '+dbErr.message;msg.style.color='#ff6b6b';}
+    else{
+      currentProfile={...currentProfile,avatar_url:avatarUrl};
+      updateNavAvatar();
+      selectedAvatarFile=null;
+    }
   }
+  msg.textContent='✓ Profile saved!';
+  updateNavAvatar();
+  if(viewingUserId===currentUser.id) viewProfile(currentUser.id);
   btn.disabled=false; btn.textContent='[ SAVE CHANGES ]';
 };
 
