@@ -493,7 +493,7 @@
       <!-- Name + role -->
       <div class="pview-info">
         <div class="pview-name" id="pviewName">---</div>
-        <div class="pview-role" id="pviewRole">// Community Member</div>
+        <div class="pview-role" id="pviewRole">Community Member</div>
       </div>
       <!-- Bio -->
       <div class="pview-bio" id="pviewBio"></div>
@@ -534,7 +534,7 @@
         <div class="pedit-preview-avatar" id="peditPreviewAvatar">?</div>
         <div>
           <div class="pedit-preview-name" id="peditPreviewName">---</div>
-          <div class="pedit-preview-role">// Community Member</div>
+          <div class="pedit-preview-role">Community Member</div>
         </div>
       </div>
 
@@ -587,7 +587,19 @@
 </div>
 
 <script type="module">
-import { supabase, signIn, signUp, signOut, getSession, getProfile, getUserBadges, ensureLoginBadges, BADGE_CATALOG } from './supabase.js';
+import { supabase, signIn, signUp, signOut, getSession, getProfile, BADGE_CATALOG } from './supabase.js';
+
+// Badge functions defined here to use the same supabase instance
+async function grantBadge(userId, badgeId) {
+  const { error } = await supabase
+    .from('user_badges')
+    .upsert({ user_id: userId, badge_id: badgeId }, { onConflict: 'user_id,badge_id' });
+  if (error) console.warn('grantBadge error:', error.message);
+}
+async function ensureLoginBadges(userId) {
+  await grantBadge(userId, 'member');
+  await grantBadge(userId, 'early_tester');
+}
 
 // ============================================================
 //  EMOJI DATA
@@ -1302,7 +1314,7 @@ window.viewProfile=async function(userId){
   setAvatarEl(document.getElementById('pviewAvatar'),prof.avatar_url,color,uname[0].toUpperCase());
   // Name + role
   document.getElementById('pviewName').textContent=uname;
-  document.getElementById('pviewRole').textContent=isOwn?"// ★ That's you!":'// Community Member';
+  document.getElementById('pviewRole').textContent=isOwn?"★ The Creator ★":'Community Member';
   // Bio
   const bioEl=document.getElementById('pviewBio');
   if(prof.bio){bioEl.textContent='"'+prof.bio+'"';bioEl.classList.remove('pview-bio-empty');}
