@@ -98,6 +98,10 @@
 .msg-username{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:.04em;cursor:pointer;}
 .msg-username:hover{text-decoration:underline;}
 .msg-time{font-family:var(--mono);font-size:9px;color:var(--text-dim);}
+/* Date separator */
+.date-sep{display:flex;align-items:center;gap:10px;margin:18px 0 10px;padding:0 4px;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.14em;user-select:none;}
+.date-sep::before,.date-sep::after{content:"";flex:1;height:1px;background:rgba(0,212,255,.1);}
+.date-sep span{white-space:nowrap;padding:0 4px;}
 .msg-badges{display:flex;gap:3px;align-items:center;}
 .msg-badge-pill{font-family:var(--mono);font-size:8px;padding:1px 5px;border:1px solid;border-radius:2px;letter-spacing:.06em;white-space:nowrap;}
 .msg-bubble{font-family:var(--mono);font-size:12px;color:var(--text-main);line-height:1.7;padding:6px 10px;margin-left:36px;background:rgba(0,212,255,.03);border-left:1px solid rgba(0,212,255,.1);word-break:break-word;white-space:pre-wrap;position:relative;}
@@ -999,8 +1003,24 @@ function renderMessage(msg, prepend=false, isFirstUnread=false) {
   const avatarUrl=msg.profiles?.avatar_url||null;
   const initial=username[0].toUpperCase();
   const _d=new Date(msg.created_at);
-  const time=_d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  const dateStr=_d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+
+  // ── Time: always HH:MM (24h, no locale quirks) ──────────────
+  const time=`${String(_d.getHours()).padStart(2,'0')}:${String(_d.getMinutes()).padStart(2,'0')}`;
+
+  // ── Date key for separator (YYYY-MM-DD, locale-neutral) ──────
+  const yy=_d.getFullYear(), mm=_d.getMonth(), dd=_d.getDate();
+  const dateKey=`${yy}-${String(mm+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+
+  // ── Human-readable separator label ───────────────────────────
+  const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now=new Date();
+  const todayKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const yestD=new Date(now); yestD.setDate(yestD.getDate()-1);
+  const yestKey=`${yestD.getFullYear()}-${String(yestD.getMonth()+1).padStart(2,'0')}-${String(yestD.getDate()).padStart(2,'0')}`;
+  let dateLabel;
+  if(dateKey===todayKey) dateLabel='Today';
+  else if(dateKey===yestKey) dateLabel='Yesterday';
+  else dateLabel=`${String(dd).padStart(2,'0')} ${MONTHS[mm]} ${yy}`;
   const avatarInner=avatarUrl?`<img src="${avatarUrl}" alt="avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`:initial;
   const avatarStyle=avatarUrl?'background:transparent;':`background:${color};`;
 
@@ -1030,14 +1050,14 @@ function renderMessage(msg, prepend=false, isFirstUnread=false) {
   if(msg.image_url) html+=`<img class="msg-img" src="${msg.image_url}" alt="image" onclick="openLightbox('${msg.image_url}')">`;
   html+=`<div class="msg-reactions" id="reactions-${msg.id}"></div>`;
 
-  // Date separator — append BEFORE the group, check existing seps properly
+  // Date separator — insert BEFORE the group if date changed
   const existingSeps = container.querySelectorAll('.date-sep');
-  const lastSep = existingSeps[existingSeps.length - 1];
-  if (!lastSep || lastSep.dataset.date !== dateStr) {
+  const lastSep = existingSeps.length ? existingSeps[existingSeps.length-1] : null;
+  if (!lastSep || lastSep.dataset.date !== dateKey) {
     const sep = document.createElement('div');
     sep.className = 'date-sep';
-    sep.dataset.date = dateStr;
-    sep.innerHTML = `<span>${dateStr}</span>`;
+    sep.dataset.date = dateKey;
+    sep.innerHTML = `<span>${dateLabel}</span>`;
     container.appendChild(sep);
   }
 
@@ -1383,7 +1403,9 @@ window.viewProfile=async function(userId){
 
   const color=prof.avatar_color||'#00d4ff';
   const uname=prof.username||'unknown';
-  const joinDate=prof.created_at?new Date(prof.created_at).toLocaleDateString('en-GB',{month:'short',year:'numeric'}):'—';
+  const _jd=prof.created_at?new Date(prof.created_at):null;
+  const MONTHS2=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const joinDate=_jd?`${MONTHS2[_jd.getMonth()]} ${_jd.getFullYear()}`:'—';
 
   // Banner
   document.getElementById('pviewBanner').style.cssText=`background:linear-gradient(135deg,${color}30 0%,${color}08 60%,transparent 100%);height:90px;`;
