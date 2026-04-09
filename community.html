@@ -912,7 +912,9 @@ async function selectRoom(room,el,silent=false) {
 //  MESSAGES
 // ============================================================
 async function loadMessages() {
-  const {data}=await supabase.from('messages').select('*').eq('room_id',currentRoomId).order('created_at',{ascending:true}).limit(100);
+  // Fetch the 100 MOST RECENT messages (desc), then reverse for chronological display
+  const {data:rawData}=await supabase.from('messages').select('*').eq('room_id',currentRoomId).order('created_at',{ascending:false}).limit(100);
+  const data = rawData ? [...rawData].reverse() : rawData;
   const container=document.getElementById('commMessages');
   container.innerHTML='';
   if(!data||!data.length){
@@ -1158,6 +1160,9 @@ function subscribeRealtime() {
             replyProf = rp;
           }
         }
+
+        // Re-check after all async ops — optimistic render may have already added the element
+        if (document.querySelector(`[data-msg-id="${payload.new.id}"]`)) return;
 
         renderMessage({
           ...payload.new,
