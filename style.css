@@ -483,61 +483,159 @@ body {
 .share-toast { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; color: var(--green); text-align: center; height: 16px; }
 
 /* RESPONSIVE */
+/* ============================================================
+   RESPONSIVE — TABLET  ≤ 768px
+   ============================================================ */
 @media (max-width: 768px) {
   .layout { padding: 16px 14px; }
-  .nav-title { font-size: 11px; }
+  .nav-title { font-size: 12px; }
   .nav-subtitle { font-size: 7px; }
   .nav-logo-img { height: 28px; }
-  .page-title { font-size: 16px; }
+  .page-title { font-size: 18px; }
   .wiki-banner { padding: 18px 16px; }
-  .banner-title { font-size: 17px; }
+  .banner-title { font-size: 18px; }
   .grid-2 { grid-template-columns: 1fr; }
   .wiki-card-body { padding: 12px; }
   #social-grid { grid-template-columns: 1fr !important; }
-  .wiki-footer { flex-direction: column; gap: 4px; padding: 10px 14px; font-size: 8px; }
+  .wiki-footer { flex-direction: column; gap: 4px; padding: 10px 14px; font-size: 9px; }
   .drawer { width: 220px; }
   .ld-window { width: 95vw; }
   .ld-body { padding: 14px; gap: 10px; }
   .link-modal-box, .share-modal-box { width: 95vw; }
   .stats-row { gap: 0; }
-  .stat-num { font-size: 16px; }
+  .stat-num { font-size: 18px; }
   .stack-grid { grid-template-columns: repeat(2, 1fr); }
   .featured-proj-inner { flex-direction: column; }
   .featured-proj-right { flex-direction: row; align-items: center; }
 }
+
+/* ============================================================
+   RESPONSIVE — MOBILE  ≤ 480px
+   ============================================================ */
 @media (max-width: 480px) {
-  :root { --nav-h: 52px; }
-  .nav-title { font-size: 10px; letter-spacing: .04em; }
+  /* ── Root / Body ── */
+  :root { --nav-h: 54px; }
+  body { font-size: 14px; }
+
+  /* ── Nav ── */
+  .topnav { padding: 0 12px; }
+  .nav-title { font-size: 12px; letter-spacing: .04em; }
   .nav-subtitle { display: none; }
-  .nav-logo-img { height: 24px; }
-  .topnav { padding: 0 10px; }
-  .layout { padding: 12px 10px; }
-  .page-title { font-size: 14px; }
+  .nav-logo-img { height: 26px; }
+  .search-toggle-btn { width: 40px; height: 40px; font-size: 15px; }
+  .hamburger { width: 40px; height: 40px; }
+  .hamburger span { width: 20px; }
+
+  /* ── Layout ── */
+  .layout { padding: 14px 12px; }
+
+  /* ── Page header ── */
+  .page-title { font-size: 18px; }
+  .page-header { margin-bottom: 16px; padding-bottom: 10px; }
   .page-header-line { display: none; }
-  .page-btn { font-size: 8px; padding: 4px 8px; }
-  .wiki-banner { padding: 14px 12px; margin-bottom: 12px; }
-  .banner-title { font-size: 14px; }
-  .banner-eyebrow { font-size: 8px; }
-  .grid-2 { gap: 10px; margin-bottom: 10px; }
-  .wiki-card-header { font-size: 9px; padding: 6px 10px; }
-  .wiki-card-body { padding: 10px; }
-  .about-text { font-size: 10px; }
-  .wiki-tag { font-size: 8px; padding: 2px 6px; }
-  .info-key { min-width: 55px; font-size: 9px; }
-  .info-val { font-size: 10px; }
-  .proj-name { font-size: 11px; }
-  .proj-desc { font-size: 9px; }
-  .drawer { width: 200px; }
-  .drawer-link { font-size: 11px; padding: 8px 16px; }
-  .ld-scan-label { font-size: 9px; }
-  .ld-scan-val { font-size: 8px; min-width: 50px; }
-  .share-btn { font-size: 9px; padding: 8px 10px; }
-  .stat-num { font-size: 13px; }
-  .stat-label { font-size: 8px; }
-  .proj-filter { font-size: 8px; padding: 3px 7px; }
-  .search-box { width: 95vw; }
-  .profile-block { flex-direction: column; text-align: center; }
+  .page-btn { font-size: 10px; padding: 7px 12px; }
+  .proj-filter-row { gap: 6px; flex-wrap: wrap; }
+  .proj-filter { font-size: 10px; padding: 6px 12px; }
+
+  /* ── Banner ── */
+  .wiki-banner { padding: 16px 14px; margin-bottom: 14px; }
+  .banner-title { font-size: 18px; }
+  .banner-eyebrow { font-size: 10px; }
+  .banner-glitch-line { font-size: 10px; letter-spacing: .1em; }
+
+  /* ── Cards ── */
+  .grid-2 { gap: 12px; margin-bottom: 12px; }
+  .wiki-card-header { font-size: 11px; padding: 9px 12px; letter-spacing: .1em; }
+  .wiki-card-body { padding: 12px; }
+
+  /* ── About ── */
+  .about-text { font-size: 13px; line-height: 1.75; }
+  .wiki-tag { font-size: 10px; padding: 4px 9px; }
+  .tag-row { gap: 6px; }
+
+  /* ── Info table ── */
+  .info-row { padding: 7px 0; font-size: 13px; gap: 8px; }
+  .info-key { min-width: 70px; font-size: 11px; }
+  .info-val { font-size: 13px; }
+
+  /* ── Activity log ── */
+  .log-entry { padding: 8px 0; gap: 8px; font-size: 12px; }
+  .log-date { font-size: 10px; min-width: 62px; }
+  .log-msg { font-size: 11px; }
+  .log-badge { font-size: 9px; padding: 2px 7px; }
+
+  /* ── Socials ── */
+  .social-row { padding: 10px 0; gap: 12px; }
+  .social-icon { width: 32px; height: 32px; }
+  .social-name { font-size: 13px; }
+  .social-handle { font-size: 11px; }
+
+  /* ── Projects ── */
+  .project-entry { padding: 10px 0; gap: 10px; }
+  .proj-num { font-size: 15px; }
+  .proj-name { font-size: 13px; }
+  .proj-desc { font-size: 11px; }
+  .proj-badge { font-size: 9px; padding: 3px 8px; }
+
+  /* ── Tech stack ── */
+  .stack-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stack-item { padding: 12px 6px; font-size: 10px; }
+  .stack-item i { font-size: 20px; }
+
+  /* ── Stats row ── */
+  .stat-num { font-size: 18px; }
+  .stat-label { font-size: 9px; }
+
+  /* ── Profile block ── */
+  .profile-block { flex-direction: column; text-align: center; gap: 12px; }
   .profile-loc { justify-content: center; }
+  .profile-name { font-size: 17px; }
+  .profile-role { font-size: 11px; }
+  .about-long-text { font-size: 13px; }
+
+  /* ── Skill bars ── */
+  .skill-bar-name, .skill-bar-pct { font-size: 11px; }
+
+  /* ── Drawer ── */
+  .drawer { width: 240px; }
+  .drawer-link { font-size: 13px; padding: 13px 20px; }
+  .drawer-nav-label { font-size: 10px; padding: 16px 20px 8px; }
+  .drawer-stat-key, .drawer-stat-val { font-size: 11px; }
+
+  /* ── Search ── */
+  .search-overlay { padding-top: 60px; }
+  .search-box { width: 96vw; }
+  .search-box-header { font-size: 11px; padding: 8px 14px; }
+  .search-input { font-size: 14px; }
+  .search-result-title { font-size: 13px; }
+  .search-result-desc { font-size: 11px; }
+  .search-result-item { padding: 13px 14px; }
+
+  /* ── Featured project ── */
+  .featured-proj-name { font-size: 14px; }
+  .featured-proj-tech { font-size: 10px; }
+  .featured-proj-desc { font-size: 11px; }
+  .featured-proj-btn { font-size: 10px; padding: 7px 14px; }
+  .featured-proj-right { flex-direction: row; align-items: center; gap: 8px; }
+
+  /* ── Loader ── */
+  .ld-scan-label { font-size: 10px; }
+  .ld-scan-val { font-size: 9px; min-width: 50px; }
+
+  /* ── Modals ── */
+  .link-modal-box, .share-modal-box { width: 96vw; }
+  .link-modal-label { font-size: 13px; }
+  .link-modal-url { font-size: 12px; }
+  .link-modal-warn { font-size: 10px; }
+  .link-btn-cancel, .link-btn-confirm { font-size: 11px; padding: 9px 16px; }
+  .share-btn { font-size: 11px; padding: 11px 14px; }
+  .share-label { font-size: 10px; }
+
+  /* ── Footer ── */
+  .wiki-footer { font-size: 9px; padding: 10px 12px; }
+
+  /* ── Hide cursor effect on touch ── */
+  .cursor-dot, .cursor-ring { display: none !important; }
 }
 /* ============================================================
    CURSOR EFFECT
