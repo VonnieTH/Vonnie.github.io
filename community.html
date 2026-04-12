@@ -1248,6 +1248,7 @@ let viewingUserId   = null;
 let reactPickerMsgId = null;
 let realtimeRetryTimer = null;
 let vonnieHistory   = [];
+const localRenderedIds = new Set(); // track messages rendered locally to skip realtime duplicate
 let vonnieTyping    = false;
 
 // ============================================================
@@ -1523,12 +1524,8 @@ async function loadMessages() {
   container.style.visibility = 'hidden';
 
   data.forEach(msg=>{
-    if (msg.is_bot) {
-      renderBotMessage(msg.content, msg.bot_trigger_user, msg.bot_trigger_cmd, true);
-      return;
-    }
-    msg.profiles=profileMap[msg.user_id]||null;
-    msg.userBadges=badgeMap[msg.user_id]||[];
+    msg.profiles=msg.is_vonnie ? { username:'Vonnie', avatar_color:'#9b6dff', avatar_url:null } : (profileMap[msg.user_id]||null);
+    msg.userBadges=msg.is_vonnie ? [] : (badgeMap[msg.user_id]||[]);
     msg.reactions=reactionMap[msg.id]||[];
     msg.replyMsg=replyMap[msg.reply_to]||null;
     msg.replyProf=msg.replyMsg?(profileMap[msg.replyMsg.user_id]||null):null;
@@ -1573,11 +1570,19 @@ function renderMessage(msg, prepend=false, isFirstUnread=false, animate=false) {
   const container=document.getElementById('commMessages');
   const empty=document.getElementById('commEmpty');
   if(empty) empty.remove();
-  const isOwn=msg.user_id===currentUser?.id;
-  const username=msg.profiles?.username||'unknown';
-  const color=msg.profiles?.avatar_color||'#00d4ff';
-  const avatarUrl=msg.profiles?.avatar_url||null;
-  const initial=username[0].toUpperCase();
+
+  // ── Vonnie AI message — special rendering ─────────────────
+  const isVonnie = msg.is_vonnie === true;
+  if (isVonnie) {
+    // Rebuild vonnie context from saved message
+    msg.profiles = msg.profiles || { username: 'Vonnie', avatar_color: '#9b6dff', avatar_url: null };
+  }
+
+  const isOwn=msg.user_id===currentUser?.id && !isVonnie;
+  const username=isVonnie ? 'Vonnie' : (msg.profiles?.username||'unknown');
+  const color=isVonnie ? '#9b6dff' : (msg.profiles?.avatar_color||'#00d4ff');
+  const avatarUrl=isVonnie ? null : (msg.profiles?.avatar_url||null);
+  const initial=isVonnie ? 'V' : username[0].toUpperCase();
   const _d=new Date(msg.created_at);
 
   // ── Time: always HH:MM (24h, no locale quirks) ──────────────
@@ -1598,7 +1603,9 @@ function renderMessage(msg, prepend=false, isFirstUnread=false, animate=false) {
   else if(dateKey===yestKey) dateLabel='Yesterday';
   else dateLabel=`${String(dd).padStart(2,'0')} ${MONTHS[mm]} ${yy}`;
   const avatarInner=avatarUrl?`<img src="${avatarUrl}" alt="avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`:initial;
-  const avatarStyle=avatarUrl?'background:transparent;':`background:${color};`;
+  const avatarStyle=isVonnie
+    ? 'background:linear-gradient(135deg,#9b6dff,#00d4ff);font-size:13px;color:#000;'
+    : (avatarUrl?'background:transparent;':`background:${color};`);
 
   const group=document.createElement('div');
   group.className='msg-group' + (animate ? ' animate-in' : '');
@@ -1613,17 +1620,22 @@ function renderMessage(msg, prepend=false, isFirstUnread=false, animate=false) {
 
   const safeContent=escHtml(msg.content||'').replace(/`/g,'\\`');
   const reactBtn=`<button class="msg-action-btn" onclick="openReactPicker(event,'${msg.id}')">😊 React</button>`;
-  const replyBtn=`<button class="msg-action-btn" onclick="startReply('${msg.id}','${escHtml(username)}',\`${safeContent}\`)">↩ Reply</button>`;
-  const pinBtn=`<button class="msg-action-btn pin" onclick="pinMessage('${msg.id}')">📌 Pin</button>`;
-  const delBtn=isOwn?`<button class="msg-action-btn del" onclick="deleteMessage('${msg.id}')">DEL</button>`:'';
+  const replyBtn=isVonnie?'':`<button class="msg-action-btn" onclick="startReply('${msg.id}','${escHtml(username)}',\`${safeContent}\`)">↩ Reply</button>`;
+  const pinBtn=isVonnie?'':`<button class="msg-action-btn pin" onclick="pinMessage('${msg.id}')">📌 Pin</button>`;
+  const delBtn=(!isVonnie && isOwn)?`<button class="msg-action-btn del" onclick="deleteMessage('${msg.id}')">DEL</button>`:'';
+
+  const usernameClass = isVonnie ? 'msg-username vonnie-name' : 'msg-username';
+  const avatarClick   = isVonnie ? '' : `onclick="viewProfile('${msg.user_id}')"`;
+  const nameClick     = isVonnie ? '' : `onclick="viewProfile('${msg.user_id}')"`;
 
   let html=`${replyHtml}<div class="msg-header">
-    <div class="msg-avatar" style="${avatarStyle}" onclick="viewProfile('${msg.user_id}')">${avatarInner}</div>
-    <span class="msg-username" onclick="viewProfile('${msg.user_id}')">${escHtml(username)}</span>
+    <div class="msg-avatar" style="${avatarStyle}" ${avatarClick}>${avatarInner}</div>
+    <span class="${usernameClass}" ${nameClick}>${escHtml(username)}</span>
     <span class="msg-time">${time}</span>
     <div class="msg-actions">${reactBtn}${replyBtn}${pinBtn}${delBtn}</div>
   </div>`;
-  if(msg.content) html+=`<div class="msg-bubble${isOwn?' own':''}">${formatText(msg.content)}</div>`;
+  const bubbleClass = isVonnie ? 'msg-bubble vonnie-bubble' : `msg-bubble${isOwn?' own':''}`;
+  if(msg.content) html+=`<div class="${bubbleClass}">${formatText(msg.content)}</div>`;
   if(msg.image_url) html+=`<img class="msg-img" src="${msg.image_url}" alt="image" onclick="openLightbox('${msg.image_url}')">`;
   html+=`<div class="msg-reactions" id="reactions-${msg.id}"></div>`;
 
@@ -1735,7 +1747,24 @@ function subscribeRealtime() {
       { event: 'INSERT', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
       async (payload) => {
         if (document.querySelector(`[data-msg-id="${payload.new.id}"]`)) return;
+        if (localRenderedIds.has(payload.new.id)) { localRenderedIds.delete(payload.new.id); return; }
         if (currentRoomId !== roomId) return;
+
+        const isVonnie = payload.new.is_vonnie === true;
+
+        // Vonnie messages: skip profile fetch, use Vonnie identity
+        if (isVonnie) {
+          renderMessage({
+            ...payload.new,
+            profiles:   { username:'Vonnie', avatar_color:'#9b6dff', avatar_url:null },
+            userBadges: [],
+            reactions:  [],
+            replyMsg: null, replyProf: null, replyCount: 0,
+          }, false, false, true);
+          saveLastSeen(roomId);
+          if (isNearBottom()) scrollToBottom(); else showNewMsgToast();
+          return;
+        }
 
         const [{ data: profile }, { data: badges }] = await Promise.all([
           supabase.from('profiles').select('id,username,avatar_color,avatar_url').eq('id', payload.new.user_id).single(),
@@ -1754,27 +1783,23 @@ function subscribeRealtime() {
 
         if (document.querySelector(`[data-msg-id="${payload.new.id}"]`)) return;
 
-        // Bot reply saved to DB — render directly for all users
-        if (payload.new.is_bot) {
-          renderBotMessage(payload.new.content, payload.new.bot_trigger_user, payload.new.bot_trigger_cmd, true);
-          saveLastSeen(roomId);
-          if (isNearBottom()) scrollToBottom(); else showNewMsgToast();
-          return;
-        }
-
         const isOthers = payload.new.user_id !== currentUser?.id;
 
-        // Bot room: user command from others — just render the message (bot reply comes via its own DB insert)
+        // Bot room: if incoming message is a command, render bot reply locally
         if (currentRoomMode === 'bot' && payload.new.content?.startsWith('/') && isOthers) {
-          renderMessage({
-            ...payload.new,
-            profiles: profile || null,
-            userBadges: (badges || []).map(x => x.badge_id),
-            reactions: [], replyMsg, replyProf, replyCount: 0,
-          }, false, false, true);
-          saveLastSeen(roomId);
-          if (isNearBottom()) scrollToBottom(); else showNewMsgToast();
-          return;
+          const reply = getBotReply(payload.new.content);
+          if (reply !== null) {
+            renderMessage({
+              ...payload.new,
+              profiles: profile || null,
+              userBadges: (badges || []).map(x => x.badge_id),
+              reactions: [], replyMsg, replyProf, replyCount: 0,
+            }, false, false, true);
+            setTimeout(() => renderBotMessage(reply, profile?.username || 'unknown', payload.new.content), 600);
+            saveLastSeen(roomId);
+            if (isNearBottom()) scrollToBottom(); else showNewMsgToast();
+            return;
+          }
         }
 
         renderMessage({
@@ -1872,24 +1897,13 @@ window.sendMessage = async function() {
         user_id: currentUser.id, room_id: currentRoomId, content
       }).select().single();
       if (cmdInserted) {
+        localRenderedIds.add(cmdInserted.id);
         let badges=[];
         try{const{data:b}=await supabase.from('user_badges').select('badge_id').eq('user_id',currentUser.id);badges=b||[];}catch(e){}
         renderMessage({...cmdInserted,profiles:currentProfile,userBadges:badges.map(b=>b.badge_id),reactions:[],replyMsg:null,replyProf:null,replyCount:0},false,false,true);
       }
-      // Save bot reply to DB (is_bot=true, user_id=null) so ALL users see it
-      setTimeout(async () => {
-        const {data:botInserted} = await supabase.from('messages').insert({
-          user_id: null,
-          room_id: currentRoomId,
-          content: reply,
-          is_bot: true,
-          bot_trigger_user: currentProfile?.username || 'user',
-          bot_trigger_cmd: content,
-        }).select().single();
-        // Render locally immediately (realtime will handle other users)
-        if (botInserted) renderBotMessage(reply, currentProfile?.username || 'user', content);
-        else renderBotMessage(reply, currentProfile?.username || 'user', content);
-      }, 500);
+      // Render bot reply locally with attribution
+      setTimeout(() => renderBotMessage(reply, currentProfile?.username || 'user', content), 500);
       return;
     }
   }
@@ -2548,7 +2562,7 @@ function getBotReply(content) {
   return null;
 }
 
-function renderBotMessage(content, triggeredBy, command, fromDB=false) {
+function renderBotMessage(content, triggeredBy, command) {
   const container = document.getElementById('commMessages');
   const empty = document.getElementById('commEmpty');
   if (empty) empty.remove();
@@ -2595,21 +2609,16 @@ async function callVonnieAI(userMessage) {
   if (vonnieTyping) return;
   vonnieTyping = true;
 
-  // Add to history
   vonnieHistory.push({ role: 'user', content: userMessage });
-  // Keep last 20 turns for context window
   if (vonnieHistory.length > 20) vonnieHistory = vonnieHistory.slice(-20);
 
-  // Show typing indicator
   const typingId = 'vonnie-typing-' + Date.now();
   renderVonnieTyping(typingId);
 
   try {
     const response = await fetch(VONNIE_WORKER_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 400,
@@ -2618,21 +2627,40 @@ async function callVonnieAI(userMessage) {
       }),
     });
 
-    const data = await response.json();
-
-    // Remove typing indicator
     document.getElementById(typingId)?.remove();
 
     if (!response.ok) {
-      renderVonnieMessage('Oh no, theres a connection problem. Lets try again! 📡');
-      vonnieHistory.pop(); // remove failed message
+      const errData = await response.json().catch(()=>({}));
+      console.error('Vonnie Worker error:', response.status, errData);
+      renderVonnieMessage(`⚠️ Error ${response.status}: ${errData?.error?.message || 'Worker returned an error'}`);
+      vonnieHistory.pop();
     } else {
+      const data = await response.json();
       const aiText = data.content?.[0]?.text || '...';
       vonnieHistory.push({ role: 'assistant', content: aiText });
-      renderVonnieMessage(aiText);
+
+      // ── Save Vonnie's reply to Supabase so everyone sees it + persists on reload ──
+      const { data: saved, error: saveErr } = await supabase.from('messages').insert({
+        user_id:   currentUser.id,
+        room_id:   currentRoomId,
+        content:   aiText,
+        is_vonnie: true,
+      }).select().single();
+
+      if (saved) {
+        localRenderedIds.add(saved.id); // tell realtime to skip this
+        saved.profiles   = { username: 'Vonnie', avatar_color: '#9b6dff', avatar_url: null };
+        saved.userBadges = [];
+        saved.reactions  = [];
+        renderMessage(saved);
+      } else {
+        // fallback ถ้า insert ล้มเหลว
+        renderVonnieMessage(aiText);
+      }
     }
   } catch(e) {
     document.getElementById(typingId)?.remove();
+    console.error('Vonnie fetch error:', e);
     renderVonnieMessage('Oh no, theres a connection problem. Lets try again! 📡');
     vonnieHistory.pop();
   }
