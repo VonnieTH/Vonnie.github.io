@@ -328,6 +328,24 @@
 .unread-divider::before,.unread-divider::after{content:"";flex:1;height:1px;background:rgba(255,107,107,.3);}
 .new-msg-toast{position:absolute;bottom:130px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--cyan-border);box-shadow:0 4px 16px rgba(0,0,0,.6);font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:.08em;padding:6px 14px;cursor:pointer;z-index:400;white-space:nowrap;animation:fadeUp .2s ease;}
 .new-msg-toast:hover{background:var(--cyan-dim);}
+
+/* ======= ROOM MODE BADGES ======= */
+.room-mode-badge{font-family:var(--mono);font-size:8px;letter-spacing:.1em;padding:2px 8px;border:1px solid;text-transform:uppercase;flex-shrink:0;}
+.room-mode-badge.image-only{border-color:rgba(155,109,255,.5);color:#9b6dff;background:rgba(155,109,255,.08);}
+.room-mode-badge.slow{border-color:rgba(240,192,64,.5);color:var(--gold);background:rgba(240,192,64,.08);}
+.room-mode-badge.bot{border-color:rgba(64,255,128,.5);color:var(--green);background:rgba(64,255,128,.08);}
+.room-desc{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:.08em;}
+
+/* Slow mode countdown on send button */
+.comm-send-btn.slow-count{background:rgba(240,192,64,.12);border-color:var(--gold);color:var(--gold);}
+
+/* Image-only overlay */
+.img-only-hint{display:none;align-items:center;justify-content:center;gap:8px;padding:10px 18px;background:rgba(155,109,255,.06);border-top:1px solid rgba(155,109,255,.2);font-family:var(--mono);font-size:11px;color:#9b6dff;letter-spacing:.08em;}
+.img-only-hint.show{display:flex;}
+
+/* Bot message style */
+.msg-bubble.bot-reply{background:rgba(64,255,128,.06);border-left-color:rgba(64,255,128,.4);color:var(--green);}
+.bot-avatar{background:#1a2e1a!important;color:var(--green)!important;}
 @media(max-width:600px){
   /* ── NAV ── */
   .comm-nav{height:50px;padding:0 12px;gap:8px;}
@@ -598,7 +616,8 @@
     <div class="comm-chat" style="position:relative;">
       <div class="comm-chat-header">
         <span class="comm-chat-room-name" id="chatRoomName">#general</span>
-        <span>— VonnieStudio Community</span>
+        <span class="room-desc" id="roomDesc">— VonnieStudio Community</span>
+        <span class="room-mode-badge" id="roomModeBadge" style="display:none;"></span>
         <button class="search-btn-hdr" onclick="openSearch()" title="Search messages">🔍 SEARCH</button>
         <div class="rt-status" id="rtStatus">
           <div class="rt-status-dot" id="rtStatusDot"></div>
@@ -644,6 +663,11 @@
         <div class="emoji-grid" id="emojiGrid"></div>
       </div>
 
+      <!-- IMAGE-ONLY HINT -->
+      <div class="img-only-hint" id="imgOnlyHint">
+        <i class="fa-solid fa-camera" style="font-size:13px;"></i>
+        <span>📸 This channel is for images only — attach an image to post</span>
+      </div>
       <div class="comm-input-bar">
         <button class="comm-img-btn" onclick="document.getElementById('imgFileInput').click()" title="Attach image"><i class="fa-solid fa-image"></i></button>
         <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageSelect(event)">
@@ -1402,7 +1426,10 @@ async function loadRooms() {
   data.forEach((room,i)=>{
     const div=document.createElement('div');
     div.className='room-item'+(i===0?' active':'');
-    div.innerHTML=`<span class="room-item-hash">#</span><span>${room.name.replace('#','')}</span>`;
+    const rkey = room.name.replace(/^#/,'').toLowerCase();
+    const rcfg = ROOM_CONFIG[rkey] || {};
+    const ricon = (rcfg.mode && rcfg.mode !== 'normal') ? rcfg.icon : '#';
+    div.innerHTML=`<span class="room-item-hash">${ricon}</span><span>${room.name.replace('#','')}</span>`;
     div.onclick=()=>{ selectRoom(room,div); if(isMobile()) closeMobSidebar(); };
     list.appendChild(div);
     if(i===0) selectRoom(room,div,true);
@@ -1416,6 +1443,7 @@ async function selectRoom(room,el,silent=false) {
   if(!silent) document.getElementById('commMessages').innerHTML='';
   cancelReply();
   closeSearch();
+  applyRoomMode(room.name);
   await loadMessages();
   subscribeRealtime();
   loadPinnedMessage(room.id);
@@ -1748,6 +1776,33 @@ window.sendMessage = async function() {
   const btn=document.getElementById('sendBtn');
   if(!content&&!selectedFile) return;
   if(!currentRoomId) return;
+
+  // ── IMAGE-ONLY mode ──────────────────────────────────────
+  if (currentRoomMode === 'image-only' && !selectedFile) {
+    const hint = document.getElementById('imgOnlyHint');
+    if (hint) { hint.style.outline = '1px solid #9b6dff'; setTimeout(()=>hint.style.outline='', 1000); }
+    return;
+  }
+
+  // ── SLOW MODE ────────────────────────────────────────────
+  if (currentRoomMode === 'slow') {
+    const key = (document.getElementById('chatRoomName')?.textContent||'').replace(/^#/,'').toLowerCase();
+    const cfg = ROOM_CONFIG[key] || {};
+    const delay = cfg.slowMs || 30000;
+    if (Date.now() - slowLastSent < delay) return;
+  }
+
+  // ── BOT COMMANDS ─────────────────────────────────────────
+  if (currentRoomMode === 'bot' && content.startsWith('/')) {
+    const reply = getBotReply(content);
+    if (reply !== null) {
+      input.value = ''; input.style.height = 'auto';
+      document.getElementById('charCounter').textContent = '';
+      cancelReply();
+      renderBotMessage(reply);
+      return;
+    }
+  }
   btn.disabled=true;
   let image_url=null;
   if(selectedFile){
@@ -1778,6 +1833,8 @@ window.sendMessage = async function() {
     scrollToBottom();
     // Check for new achievement badges (fire & forget)
     checkMessageBadges(currentUser.id, !!image_url);
+    // Slow mode cooldown
+    if (currentRoomMode === 'slow') startSlowCooldown();
   }
   input.value=''; input.style.height='auto';
   document.getElementById('charCounter').textContent='';
@@ -2175,6 +2232,162 @@ document.addEventListener('keydown',e=>{
     document.getElementById('emojiPicker').classList.remove('open');emojiPickerOpen=false;
   }
 });
+
+// ============================================================
+//  ROOM CONFIG — special behaviors per channel
+// ============================================================
+const ROOM_CONFIG = {
+  'general':      { icon: '#', desc: '— General chat',                    mode: 'normal' },
+  'random':       { icon: '#', desc: '— Random stuff & off-topic',        mode: 'normal' },
+  'showcase':     { icon: '🖼', desc: '— Share your work · images only',  mode: 'image-only' },
+  'lounge':       { icon: '☕', desc: '— Chill zone · slow mode 30s',     mode: 'slow', slowMs: 30000 },
+  'bot':          { icon: '🤖', desc: '— Bot commands: /roll /8ball /coin /rps', mode: 'bot' },
+};
+let currentRoomMode = 'normal';
+let slowLastSent = 0;
+let slowTimer = null;
+
+function applyRoomMode(roomName) {
+  const key = roomName.replace(/^#/, '').toLowerCase();
+  const cfg = ROOM_CONFIG[key] || { icon: '#', desc: '— VonnieStudio Community', mode: 'normal' };
+  currentRoomMode = cfg.mode;
+
+  // Update header desc + badge
+  const descEl = document.getElementById('roomDesc');
+  const badgeEl = document.getElementById('roomModeBadge');
+  if (descEl) descEl.textContent = cfg.desc;
+  if (badgeEl) {
+    if (cfg.mode === 'normal') {
+      badgeEl.style.display = 'none';
+    } else {
+      const labels = { 'image-only': '📸 IMAGES ONLY', 'slow': '🐢 SLOW MODE', 'bot': '🤖 BOT ROOM' };
+      badgeEl.textContent = labels[cfg.mode] || '';
+      badgeEl.className = `room-mode-badge ${cfg.mode}`;
+      badgeEl.style.display = '';
+    }
+  }
+
+  // Image-only mode
+  const imgHint = document.getElementById('imgOnlyHint');
+  const input = document.getElementById('commInput');
+  const fmtToolbar = document.querySelector('.fmt-toolbar');
+  if (cfg.mode === 'image-only') {
+    if (imgHint) imgHint.classList.add('show');
+    if (input) { input.style.display = 'none'; }
+    if (fmtToolbar) fmtToolbar.style.display = 'none';
+  } else {
+    if (imgHint) imgHint.classList.remove('show');
+    if (input) { input.style.display = ''; }
+    if (fmtToolbar) fmtToolbar.style.display = '';
+  }
+
+  // Slow mode — reset timer
+  if (slowTimer) { clearInterval(slowTimer); slowTimer = null; }
+  const sendBtn = document.getElementById('sendBtn');
+  if (sendBtn) {
+    sendBtn.classList.remove('slow-count');
+    sendBtn.textContent = '[ SEND ]';
+    sendBtn.disabled = false;
+  }
+}
+
+function startSlowCooldown() {
+  if (currentRoomMode !== 'slow') return;
+  const key = (document.getElementById('chatRoomName')?.textContent || '').replace(/^#/, '').toLowerCase();
+  const cfg = ROOM_CONFIG[key] || {};
+  const delay = cfg.slowMs || 30000;
+  slowLastSent = Date.now();
+  const sendBtn = document.getElementById('sendBtn');
+  if (slowTimer) clearInterval(slowTimer);
+  slowTimer = setInterval(() => {
+    const remaining = Math.ceil((delay - (Date.now() - slowLastSent)) / 1000);
+    if (remaining <= 0) {
+      clearInterval(slowTimer); slowTimer = null;
+      if (sendBtn) { sendBtn.classList.remove('slow-count'); sendBtn.textContent = '[ SEND ]'; sendBtn.disabled = false; }
+    } else {
+      if (sendBtn) { sendBtn.classList.add('slow-count'); sendBtn.textContent = `[ ${remaining}s ]`; sendBtn.disabled = true; }
+    }
+  }, 250);
+}
+
+// ============================================================
+//  BOT COMMANDS
+// ============================================================
+const BOT_RESPONSES = {
+  '8ball': [
+    'It is certain.','Without a doubt.','Yes, definitely.',
+    'You may rely on it.','As I see it, yes.',
+    'Most likely.','Outlook good.','Yes.',
+    'Signs point to yes.','Reply hazy, try again.',
+    "Ask again later.",'Better not tell you now.',
+    "Cannot predict now.",'Concentrate and ask again.',
+    "Don't count on it.",'My reply is no.',
+    'My sources say no.','Outlook not so good.',
+    'Very doubtful.'
+  ],
+};
+
+function getBotReply(content) {
+  const cmd = content.trim().toLowerCase();
+
+  // /roll [max]
+  if (cmd === '/roll' || cmd.startsWith('/roll ')) {
+    const max = parseInt(cmd.split(' ')[1]) || 6;
+    const n = Math.floor(Math.random() * max) + 1;
+    return '🎲 Rolled a **' + n + '** (out of ' + max + ')';
+  }
+
+  // /8ball [question]
+  if (cmd === '/8ball' || cmd.startsWith('/8ball ')) {
+    const q = content.trim().substring(7).trim();
+    const ans = BOT_RESPONSES['8ball'][Math.floor(Math.random() * BOT_RESPONSES['8ball'].length)];
+    return q ? '🎱 "' + q + '" → **' + ans + '**' : '🎱 **' + ans + '**';
+  }
+
+  // /coin /flip
+  if (cmd === '/coin' || cmd === '/flip') {
+    return Math.random() < 0.5 ? '🪙 **Heads!**' : '🪙 **Tails!**';
+  }
+
+  // /rps rock|paper|scissors
+  if (cmd.startsWith('/rps ')) {
+    const choices = ['rock', 'paper', 'scissors'];
+    const emoji = { rock: '🪨', paper: '📄', scissors: '✂️' };
+    const user = cmd.split(' ')[1] || '';
+    if (!choices.includes(user)) return '❌ Usage: /rps rock | paper | scissors';
+    const bot = choices[Math.floor(Math.random() * 3)];
+    const win = (user==='rock'&&bot==='scissors') || (user==='paper'&&bot==='rock') || (user==='scissors'&&bot==='paper');
+    const draw = user === bot;
+    const result = draw ? '🤝 Draw!' : win ? '🏆 You win!' : '💀 Bot wins!';
+    return emoji[user] + ' vs ' + emoji[bot] + ' — ' + result;
+  }
+
+  // /help
+  if (cmd === '/help' || cmd === '/commands') {
+    return '📋 **Bot commands:**\n/roll [max]  ·  /8ball [question]  ·  /coin  ·  /rps rock|paper|scissors';
+  }
+
+  return null;
+}
+
+function renderBotMessage(content) {
+  const container = document.getElementById('commMessages');
+  const empty = document.getElementById('commEmpty');
+  if (empty) empty.remove();
+  const _d = new Date();
+  const time = `${String(_d.getHours()).padStart(2,'0')}:${String(_d.getMinutes()).padStart(2,'0')}`;
+  const group = document.createElement('div');
+  group.className = 'msg-group animate-in';
+  group.dataset.msgId = 'bot-' + Date.now();
+  group.innerHTML = `<div class="msg-header">
+    <div class="msg-avatar bot-avatar" style="font-size:14px;">🤖</div>
+    <span class="msg-username" style="color:var(--green);">VonnieBot</span>
+    <span class="msg-time">${time}</span>
+  </div>
+  <div class="msg-bubble bot-reply">${formatText(content)}</div>`;
+  container.appendChild(group);
+  scrollToBottom();
+}
 
 // ============================================================
 //  LAST SEEN (localStorage per room)
