@@ -1248,7 +1248,7 @@ let viewingUserId   = null;
 let reactPickerMsgId = null;
 let realtimeRetryTimer = null;
 let vonnieHistory   = [];
-const localRenderedIds = new Set();
+const localRenderedIds = new Set(); // track messages rendered locally to skip realtime duplicate
 let vonnieTyping    = false;
 
 // ============================================================
@@ -1262,13 +1262,6 @@ async function loadVonnieMemory() {
       .eq('user_id', currentUser.id)
       .maybeSingle();
     vonnieHistory = data?.messages || [];
-    // ครั้งแรก ใส่ชื่อ user ให้ Vonnie รู้จัก
-    if (!vonnieHistory.length && currentProfile?.username) {
-      vonnieHistory.push({
-        role: 'user',
-        content: `[system: this user's name is "${currentProfile.username}". Remember it. Greet them warmly but casually on first message.]`
-      });
-    }
   } catch(e) {
     vonnieHistory = [];
   }
@@ -1276,13 +1269,12 @@ async function loadVonnieMemory() {
 
 async function saveVonnieMemory() {
   try {
-    const trimmed = vonnieHistory.slice(-30); // เก็บแค่ 30 ข้อความล่าสุด
     await supabase.from('vonnie_memory').upsert({
       user_id:    currentUser.id,
-      messages:   trimmed,
+      messages:   vonnieHistory.slice(-30),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' });
-  } catch(e) {} // silently fail
+  } catch(e) {}
 }
 
 // ============================================================
@@ -2490,7 +2482,7 @@ function applyRoomMode(roomName) {
     if (input) input.placeholder = 'Ask Vonnie anything... 🧠';
     if (imgBtn) imgBtn.style.display = 'none';
     vonnieHistory = [];
-    loadVonnieMemory(); // โหลดความทรงจำของ user คนนี้
+    loadVonnieMemory();
   } else if (cfg.mode === 'announce') {
     if (input) { input.style.display = 'none'; }
     if (fmtToolbar) fmtToolbar.style.display = 'none';
@@ -2660,7 +2652,7 @@ function renderBotMessage(content, triggeredBy, command, dbId) {
 // ============================================================
 const VONNIE_WORKER_URL = 'https://purple-glade-423b.mcheuxchang.workers.dev';
 
-const VONNIE_SYSTEM = `You are Vonnie, created by [Vonnie], a Thai people
+const VONNIE_SYSTEM = `You are Vonnie, created by [Vonnie], a Thai student people
 who loves coding, games, and building things from scratch.
 
 Your personality (based on your creator):
@@ -2692,10 +2684,9 @@ async function callVonnieAI(userMessage) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
         max_tokens: 400,
-        system: VONNIE_SYSTEM_PROMPT,
-        messages: vonnieHistory,
+        messages:   vonnieHistory,
+        username:   currentProfile?.username || null, // worker ใช้ใส่ใน system prompt
       }),
     });
 
