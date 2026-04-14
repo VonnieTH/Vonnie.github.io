@@ -49,6 +49,7 @@ function navigate(page) {
   // Update page title
   var titles = { home:'HOME', about:'ABOUT_ME', projects:'PROJECTS', contact:'CONTACT' };
   var titleEl = target && target.querySelector('.page-title');
+  if (titleEl) titleEl.textContent = '// ' + (titles[page] || page.toUpperCase());
 
   currentPage = page;
   window.scrollTo(0, 0);
