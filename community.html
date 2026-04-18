@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VonnieStudio Community</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="community.css">
+
+</head>
+<body>
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<div class="comm-loading" id="commLoading">
+  <div>COMMUNITY.EXE — INITIALIZING</div>
+  <div class="comm-loading-bar"><div class="comm-loading-fill"></div></div>
+</div>
+
+<!-- AUTH -->
+<div class="auth-screen" id="authScreen" style="display:none;">
+  <div class="auth-window">
+    <div class="auth-titlebar"><span>VONNIE_AUTH.EXE</span><span id="authTime">00:00</span></div>
+    <div class="auth-body">
+      <a href="index.html" class="auth-back"><i class="fa-solid fa-chevron-left" style="font-size:9px;"></i> Back to Wiki</a>
+      <div class="auth-logo">
+        <div class="auth-logo-title">VONNIE<span style="color:var(--text-main)">STUDIO</span></div>
+        <div class="auth-logo-sub">COMMUNITY ACCESS PORTAL</div>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">[ LOGIN ]</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">[ REGISTER ]</button>
+      </div>
+      <div class="auth-error" id="authError"></div>
+      <div class="auth-success" id="authSuccess"></div>
+      <div id="formLogin">
+        <div class="auth-form">
+          <div class="auth-field"><label class="auth-label">EMAIL</label><input type="email" class="auth-input" id="loginEmail" placeholder="your@email.com" autocomplete="email"></div>
+          <div class="auth-field"><label class="auth-label">PASSWORD</label><input type="password" class="auth-input" id="loginPassword" placeholder="••••••••" autocomplete="current-password"></div>
+          <button class="auth-btn" id="loginBtn" onclick="handleLogin()">[ LOGIN → ]</button>
+        </div>
+      </div>
+      <div id="formRegister" style="display:none;">
+        <div class="auth-form">
+          <div class="auth-field"><label class="auth-label">USERNAME</label><input type="text" class="auth-input" id="regUsername" placeholder="vonnie_user" autocomplete="off" maxlength="20"><span class="auth-hint">Letters, numbers, underscores — max 20 chars</span></div>
+          <div class="auth-field"><label class="auth-label">EMAIL</label><input type="email" class="auth-input" id="regEmail" placeholder="your@email.com" autocomplete="email"></div>
+          <div class="auth-field"><label class="auth-label">PASSWORD</label><input type="password" class="auth-input" id="regPassword" placeholder="At least 8 characters" autocomplete="new-password" minlength="8"></div>
+          <button class="auth-btn" id="registerBtn" onclick="handleRegister()">[ CREATE ACCOUNT → ]</button>
+          <div class="auth-privacy"><i class="fa-solid fa-shield-halved" style="color:var(--green)"></i> Username only — no real name or phone collected</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMMUNITY -->
+<div class="community-screen" id="communityScreen">
+  <nav class="comm-nav">
+    <!-- Mobile hamburger (hidden on desktop via CSS) -->
+    <button class="mob-menu-btn" id="mobMenuBtn" onclick="openMobSidebar()" style="display:none;">☰</button>
+    <a href="index.html" class="comm-back-btn"><i class="fa-solid fa-chevron-left" style="font-size:9px;"></i> <span>WIKI</span></a>
+    <div class="comm-nav-title">VONNIESTUDIO <span>COMMUNITY</span></div>
+    <div class="comm-nav-user">
+      <div class="comm-avatar" id="navAvatar" onclick="openOwnProfile()" title="My Profile">?</div>
+      <button id="brainBtn" onclick="openBrainModal()" style="display:none;font-family:var(--mono);font-size:9px;padding:4px 9px;border:1px solid rgba(192,132,252,.4);background:transparent;color:#c084fc;cursor:pointer;transition:all .15s;" title="Vonnie Brain">🧠</button>
+      <span id="navUsername" style="cursor:pointer;" onclick="openOwnProfile()">---</span>
+      <button class="comm-logout-btn" onclick="handleLogout()">[ LOGOUT ]</button>
+    </div>
+  </nav>
+  <div class="community-body">
+    <!-- Mobile sidebar overlay backdrop -->
+    <div class="sidebar-drawer-overlay" id="sidebarOverlay" onclick="closeMobSidebar()"></div>
+    <aside class="comm-sidebar" id="commSidebar">
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" onclick="switchSidebarTab('channels')">CHANNELS</button>
+        <button class="sidebar-tab" onclick="switchSidebarTab('server')">SERVER</button>
+      </div>
+      <div class="sidebar-panel active" id="panelChannels">
+        <div class="comm-sidebar-label">Channels</div>
+        <div id="roomList"></div>
+      </div>
+      <div class="sidebar-panel" id="panelServer">
+        <div class="server-stat-block">
+          <div class="server-stat-label">STATUS</div>
+          <div class="server-stat-val"><span class="server-status-dot online"></span>ONLINE</div>
+          <div class="server-stat-sub" id="serverUptime">uptime: 00:00:00</div>
+        </div>
+        <div class="server-stat-block">
+          <div class="server-stat-label">USERS ONLINE</div>
+          <div class="server-stat-val" id="onlineCount">0</div>
+          <div class="server-stat-sub">currently active</div>
+        </div>
+        <div class="server-stat-block">
+          <div class="server-stat-label">TOTAL MEMBERS</div>
+          <div class="server-stat-val" id="totalMembers">—</div>
+          <div class="server-stat-sub">registered accounts</div>
+        </div>
+        <div class="comm-sidebar-label" style="margin-top:4px;">Online Now</div>
+        <div id="onlineList"></div>
+      </div>
+    </aside>
+    <div class="comm-chat" style="position:relative;">
+      <div class="comm-chat-header">
+        <span class="comm-chat-room-name" id="chatRoomName">#general</span>
+        <span class="room-desc" id="roomDesc">— VonnieStudio Community</span>
+        <span class="room-mode-badge" id="roomModeBadge" style="display:none;"></span>
+        <button class="search-btn-hdr" onclick="openSearch()" title="Search messages">🔍 SEARCH</button>
+        <div class="rt-status" id="rtStatus">
+          <div class="rt-status-dot" id="rtStatusDot"></div>
+          <span class="rt-status-txt" id="rtStatusTxt">CONNECTING...</span>
+        </div>
+      </div>
+      <!-- SEARCH OVERLAY -->
+      <div class="search-overlay" id="searchOverlay">
+        <div class="search-inner">
+          <i class="fa-solid fa-magnifying-glass" style="color:var(--cyan);font-size:11px;flex-shrink:0;"></i>
+          <input class="search-input" id="searchInput" placeholder="Search messages..." autocomplete="off"
+            oninput="performSearch(this.value)" onkeydown="if(event.key==='Escape')closeSearch()">
+          <span class="search-count" id="searchCount"></span>
+          <button class="search-btn-hdr" onclick="closeSearch()">[ ✕ ]</button>
+        </div>
+      </div>
+      <!-- PIN BAR -->
+      <div class="pin-bar" id="pinBar" onclick="scrollToPinned()">
+        <i class="fa-solid fa-thumbtack pin-bar-icon"></i>
+        <span class="pin-bar-text" id="pinBarText"></span>
+        <button class="pin-bar-unpin" onclick="event.stopPropagation();unpinMessage()">[ UNPIN ]</button>
+      </div>
+      <div class="img-preview-wrap" id="imgPreviewWrap">
+        <img class="img-preview-thumb" id="imgPreviewThumb" src="" alt="">
+        <span class="img-preview-name" id="imgPreviewName"></span>
+        <button class="img-preview-remove" onclick="removeImage()">[ ✕ REMOVE ]</button>
+      </div>
+      <div class="comm-messages" id="commMessages">
+        <div class="comm-empty" id="commEmpty">
+          <i class="fa-solid fa-terminal" style="font-size:20px;color:rgba(0,212,255,.2);"></i>
+          <span>No messages yet — be the first!</span>
+        </div>
+      </div>
+      <div class="reply-bar" id="replyBar">
+        <i class="fa-solid fa-reply" style="font-size:10px;color:var(--cyan);"></i>
+        <span class="reply-bar-quote" id="replyBarText"></span>
+        <button class="reply-bar-close" onclick="cancelReply()">✕</button>
+      </div>
+
+      <!-- EMOJI PICKER -->
+      <div class="emoji-picker" id="emojiPicker">
+        <div class="emoji-picker-tabs" id="emojiCatTabs"></div>
+        <div class="emoji-grid" id="emojiGrid"></div>
+      </div>
+
+      <!-- IMAGE-ONLY HINT -->
+      <div class="img-only-hint" id="imgOnlyHint">
+        <i class="fa-solid fa-camera" style="font-size:13px;"></i>
+        <span>📸 This channel is for images only — attach an image to post</span>
+      </div>
+      <div class="comm-input-bar">
+        <button class="comm-img-btn" onclick="document.getElementById('imgFileInput').click()" title="Attach image"><i class="fa-solid fa-image"></i></button>
+        <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageSelect(event)">
+        <div class="comm-input-wrap">
+          <div class="fmt-toolbar">
+            <button class="fmt-btn" onclick="insertFmt('**','**')" title="Bold"><b>B</b></button>
+            <button class="fmt-btn" onclick="insertFmt('*','*')" title="Italic"><i>I</i></button>
+            <button class="emoji-toggle-btn" onclick="toggleEmojiPicker(event)" title="Emoji">😊</button>
+            <span class="fmt-hint">**bold** *italic* · Shift+Enter=newline</span>
+          </div>
+          <textarea class="comm-input" id="commInput" placeholder="Type a message..." autocomplete="off" maxlength="500" rows="1"
+            oninput="onInputChange(this)" onkeydown="handleInputKey(event)"></textarea>
+          <div class="char-counter" id="charCounter"></div>
+        </div>
+        <button class="comm-send-btn" id="sendBtn" onclick="sendMessage()">[ SEND ]</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ACHIEVEMENT TOAST -->
+<div class="achievement-toast" id="achievementToast">
+  <div class="achiev-icon" id="achievIcon">🏆</div>
+  <div class="achiev-info">
+    <div class="achiev-label">BADGE UNLOCKED</div>
+    <div class="achiev-name" id="achievName"></div>
+    <div class="achiev-desc" id="achievDesc"></div>
+  </div>
+</div>
+
+<!-- MUTED BAR (shown above input when user is timed out) -->
+<div class="muted-bar" id="mutedBar">
+  <i class="fa-solid fa-clock" style="font-size:11px;"></i>
+  <span id="mutedBarText">You are timed out.</span>
+</div>
+
+
+<!-- VONNIE BRAIN PANEL (Owner only) -->
+<div class="admin-overlay" id="brainModal" onclick="if(event.target===this)closeBrainModal()">
+  <div class="admin-box" style="border-color:rgba(192,132,252,.5);box-shadow:0 0 40px rgba(192,132,252,.2);width:440px;">
+    <div class="admin-header" style="color:#c084fc;background:rgba(192,132,252,.07);border-color:rgba(192,132,252,.3);">
+      <span>🧠 VONNIE JR. — GLOBAL BRAIN</span>
+      <button class="admin-close" onclick="closeBrainModal()">[ X ]</button>
+    </div>
+    <div class="admin-body" id="brainPanelBody">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:16px;">Loading brain...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL MODAL -->
+<div class="admin-overlay" id="adminModal" onclick="if(event.target===this)closeAdminModal()">
+  <div class="admin-box">
+    <div class="admin-header">
+      <span>ADMIN PANEL</span>
+      <button class="admin-close" onclick="closeAdminModal()">[ X ]</button>
+    </div>
+    <div class="admin-body">
+      <div class="admin-target">Target: <strong id="adminTargetName">---</strong> <span id="adminTargetRoleBadge"></span></div>
+
+      <!-- Message actions (shown when opened from a message) -->
+      <div id="adminMsgSection">
+        <div class="admin-section">MESSAGE</div>
+        <button class="admin-btn del-msg" id="adminDelMsgBtn" onclick="adminDeleteMessage()">
+          🗑 Delete this message
+        </button>
+      </div>
+
+      <!-- User actions -->
+      <div class="admin-section">USER ACTIONS</div>
+      <div id="timeoutSection">
+        <div class="timeout-row" id="timeoutOptRow">
+          <button class="timeout-opt" data-min="10" onclick="selectTimeout(this)">10m</button>
+          <button class="timeout-opt" data-min="60" onclick="selectTimeout(this)">1h</button>
+          <button class="timeout-opt selected" data-min="1440" onclick="selectTimeout(this)">1d</button>
+          <button class="timeout-opt" data-min="10080" onclick="selectTimeout(this)">7d</button>
+        </div>
+        <button class="admin-btn timeout" id="adminTimeoutBtn" onclick="adminTimeoutUser()" style="margin-top:6px;">
+          ⏱ Timeout user (above duration)
+        </button>
+        <button class="admin-btn revoke-mod" id="adminRemoveTimeoutBtn" onclick="adminRemoveTimeout()" style="margin-top:4px;">
+          ✓ Remove timeout
+        </button>
+      </div>
+
+      <!-- Role management (owner only) -->
+      <div id="roleSection" style="display:none;">
+        <div class="admin-section">ROLE MANAGEMENT</div>
+        <button class="admin-btn grant-mod" id="adminGrantModBtn" onclick="adminSetRole('mod')">
+          🛡 Promote to Mod
+        </button>
+        <button class="admin-btn grant-mod" id="adminGrantAdminBtn" onclick="adminSetRole('admin')" style="margin-top:4px;">
+          ⭐ Promote to Admin
+        </button>
+        <button class="admin-btn revoke-mod" id="adminRevokeRoleBtn" onclick="adminSetRole('member')" style="margin-top:4px;">
+          ↓ Demote to Member
+        </button>
+      </div>
+
+      <div class="admin-log" id="adminLog">Ready</div>
+    </div>
+  </div>
+</div>
+
+<!-- THREAD MODAL -->
+<div class="thread-overlay" id="threadOverlay" onclick="if(event.target===this)closeThread()">
+  <div class="thread-box">
+    <div class="thread-header">
+      <span>THREAD</span>
+      <button class="thread-close-btn" onclick="closeThread()">[ X ]</button>
+    </div>
+    <div class="thread-parent" id="threadParent"></div>
+    <div class="thread-reply-count" id="threadCount">0 REPLIES</div>
+    <div class="thread-messages" id="threadMessages"></div>
+  </div>
+</div>
+
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">[ ✕ CLOSE ]</button>
+  <img id="lightboxImg" src="" alt="">
+</div>
+
+<!-- REACTION MINI PICKER -->
+<div class="react-mini-picker" id="reactMiniPicker" onclick="event.stopPropagation()"></div>
+
+<!-- PROFILE VIEW -->
+<div class="pview-overlay" id="profileViewModal" onclick="if(event.target===this)closeProfileView()">
+  <div class="pview-box">
+    <!-- Sticky titlebar -->
+    <div class="pview-titlebar">
+      <span>USER PROFILE</span>
+      <button class="pview-close" onclick="closeProfileView()">[ X ]</button>
+    </div>
+    <!-- Scrollable content -->
+    <div class="pview-scroll">
+      <!-- Banner -->
+      <div class="pview-banner"><div class="pview-banner-inner" id="pviewBanner"></div></div>
+      <!-- Avatar hero (centered, overlapping) -->
+      <div class="pview-avatar-hero">
+        <div class="pview-avatar" id="pviewAvatar">?</div>
+      </div>
+      <!-- Name + role -->
+      <div class="pview-info">
+        <div class="pview-name" id="pviewName">---</div>
+        <div class="pview-role" id="pviewRole">Community Member</div>
+      </div>
+      <!-- Bio -->
+      <div class="pview-bio" id="pviewBio"></div>
+      <!-- Stats -->
+      <div class="pview-stats" id="pviewStats">
+        <div class="pview-stat"><div class="pview-stat-val" id="pstatMsg">—</div><div class="pview-stat-label">MESSAGES</div></div>
+        <div class="pview-stat"><div class="pview-stat-val" id="pstatImg">—</div><div class="pview-stat-label">IMAGES</div></div>
+        <div class="pview-stat"><div class="pview-stat-val" id="pstatXp">—</div><div class="pview-stat-label">TOTAL XP</div></div>
+      </div>
+      <!-- Level bar -->
+      <div class="pview-level-wrap">
+        <div class="pview-level-header">
+          <span class="pview-level-tag" id="pviewLevelTag">LVL 1</span>
+          <span class="pview-level-xp" id="pviewLevelXp">0 / 100 XP</span>
+        </div>
+        <div class="pview-level-track"><div class="pview-level-fill" id="pviewLevelFill" style="width:0%"></div></div>
+        <div class="pview-level-sub" id="pviewLevelSub">Lvl 2 unlocks at 100 XP</div>
+      </div>
+      <div class="pview-divider"></div>
+      <!-- Meta -->
+      <div class="pview-meta" id="pviewMeta"></div>
+      <div class="pview-divider"></div>
+      <!-- Badges -->
+      <div class="pview-section">BADGES</div>
+      <div class="pview-badges" id="pviewBadges"></div>
+      <div class="pview-divider" style="margin-bottom:14px;"></div>
+      <button class="pview-edit-btn" id="pviewEditBtn" onclick="openProfileEdit()" style="display:none;">[ ✏ EDIT MY PROFILE ]</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE EDIT -->
+<div class="pedit-overlay" id="profileEditModal" onclick="if(event.target===this)closeProfileEdit()">
+  <div class="pedit-box">
+    <div class="pedit-header"><span>PROFILE EDITOR</span><button class="pedit-close" onclick="closeProfileEdit()">[ X ]</button></div>
+    <div class="pedit-scroll">
+      <div class="pedit-preview">
+        <div class="pedit-preview-avatar" id="peditPreviewAvatar">?</div>
+        <div>
+          <div class="pedit-preview-name" id="peditPreviewName">---</div>
+          <div class="pedit-preview-role">Community Member</div>
+        </div>
+      </div>
+
+      <div class="pedit-section">BIO / DESCRIPTION</div>
+      <textarea class="pedit-textarea" id="peditBio" maxlength="150" placeholder="Tell the community about yourself..." oninput="document.getElementById('peditBioChar').textContent=(150-this.value.length)+' left'"></textarea>
+      <div class="pedit-char" id="peditBioChar">150 left</div>
+
+      <div class="pedit-section">AVATAR IMAGE</div>
+      <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarSelect(event)">
+      <div class="avatar-upload-zone" id="avatarUploadZone" onclick="document.getElementById('avatarFileInput').click()">
+        <div id="avatarUploadContent">
+          <div class="avatar-upload-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div class="avatar-upload-text">Click or drag to upload</div>
+          <div class="avatar-upload-sub">PNG, JPG, GIF · max 5MB</div>
+        </div>
+        <div id="avatarPreviewContent" style="display:none">
+          <div class="avatar-upload-preview"><img id="avatarPreviewImg" src="" alt="preview"></div>
+          <button class="avatar-upload-change" onclick="event.stopPropagation();document.getElementById('avatarFileInput').click()">[ CHANGE IMAGE ]</button>
+        </div>
+      </div>
+      <div class="crop-editor" id="cropEditor">
+        <div class="crop-canvas-wrap" id="cropWrap">
+          <canvas id="cropCanvas" width="240" height="240"></canvas>
+          <svg class="crop-overlay" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
+            <defs><mask id="cm"><rect width="240" height="240" fill="white"/><circle cx="120" cy="120" r="108" fill="black"/></mask></defs>
+            <rect width="240" height="240" fill="rgba(0,0,0,0.6)" mask="url(#cm)"/>
+            <circle cx="120" cy="120" r="108" fill="none" stroke="rgba(0,212,255,0.8)" stroke-width="1.5"/>
+            <line x1="0" y1="120" x2="12" y2="120" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+            <line x1="228" y1="120" x2="240" y2="120" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+            <line x1="120" y1="0" x2="120" y2="12" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+            <line x1="120" y1="228" x2="120" y2="240" stroke="rgba(0,212,255,0.4)" stroke-width="1"/>
+          </svg>
+        </div>
+        <div class="crop-controls">
+          <div class="crop-zoom-row">
+            <span class="crop-zoom-label">ZOOM</span>
+            <input type="range" class="crop-zoom-slider" id="cropZoom" min="0.5" max="3" step="0.01" value="1">
+            <span class="crop-zoom-val" id="cropZoomVal">1.0×</span>
+          </div>
+          <div class="crop-actions">
+            <button class="crop-cancel-btn" onclick="cancelCrop()">[ CANCEL ]</button>
+            <button class="crop-apply-btn" onclick="applyCrop()">[ APPLY CROP ]</button>
+          </div>
+        </div>
+      </div>
+      <button class="profile-save-btn" id="profileSaveBtn" onclick="saveProfile()">[ SAVE CHANGES ]</button>
+      <div class="profile-save-msg" id="profileSaveMsg"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="community.js"></script>
+
+</body>
+</html>
