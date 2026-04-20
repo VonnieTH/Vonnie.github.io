@@ -857,6 +857,7 @@ async function updateLastSeen() {
 async function init() {
   startAuthClock();
   startServerUptime();
+  handlePasswordUpdateFromLink(); // handle ?reset=1 redirect
   const session = await getSession();
   if (session) {
     currentUser = session.user;
@@ -985,10 +986,12 @@ window.switchSidebarTab = function(tab) {
   document.getElementById('panelServer').classList.toggle('active',tab==='server');
 };
 window.switchTab = function(tab) {
-  document.getElementById('formLogin').style.display=tab==='login'?'':'none';
-  document.getElementById('formRegister').style.display=tab==='register'?'':'none';
-  document.getElementById('tabLogin').classList.toggle('active',tab==='login');
-  document.getElementById('tabRegister').classList.toggle('active',tab==='register');
+  document.getElementById('formLogin').style.display    = tab==='login'    ? '' : 'none';
+  document.getElementById('formRegister').style.display = tab==='register' ? '' : 'none';
+  const resetEl = document.getElementById('formReset');
+  if (resetEl) resetEl.style.display = tab==='reset' ? '' : 'none';
+  document.getElementById('tabLogin').classList.toggle('active',    tab==='login');
+  document.getElementById('tabRegister').classList.toggle('active', tab==='register');
   clearAuthMessages();
 };
 function clearAuthMessages(){['authError','authSuccess'].forEach(id=>{const e=document.getElementById(id);e.classList.remove('show');e.textContent='';})}
@@ -998,6 +1001,47 @@ function showSuccess(msg){const e=document.getElementById('authSuccess');e.textC
 // ============================================================
 //  AUTH
 // ============================================================
+
+window.handleResetPassword = async function() {
+  clearAuthMessages();
+  const email = document.getElementById('resetEmail').value.trim();
+  const btn   = document.getElementById('resetBtn');
+  if (!email) return showError('Please enter your email');
+  btn.disabled = true; btn.textContent = '[ SENDING... ]';
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname + '?reset=1',
+  });
+  if (error) {
+    showError(error.message);
+    btn.disabled = false; btn.textContent = '[ SEND RESET LINK → ]';
+  } else {
+    showSuccess('✓ Reset link sent! Check your email (including spam folder)');
+    btn.disabled = false; btn.textContent = '[ SEND RESET LINK → ]';
+  }
+};
+
+// Handle password update after clicking reset link (redirected back with token)
+async function handlePasswordUpdateFromLink() {
+  const hash = window.location.hash;
+  // Supabase embeds #access_token=...&type=recovery in the URL after reset
+  if (!hash.includes('type=recovery') && !new URLSearchParams(window.location.search).has('reset')) return;
+
+  // Show a simple update password UI
+  const newPass = prompt('Enter your new password (min 8 characters):');
+  if (!newPass || newPass.length < 8) {
+    alert('Password must be at least 8 characters.');
+    return;
+  }
+  const { error } = await supabase.auth.updateUser({ password: newPass });
+  if (error) {
+    alert('Error: ' + error.message);
+  } else {
+    alert('✓ Password updated! You can now log in.');
+    // Clean URL
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
 window.handleLogin = async function() {
   clearAuthMessages();
   const email=document.getElementById('loginEmail').value.trim();
