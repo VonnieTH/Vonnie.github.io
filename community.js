@@ -857,7 +857,6 @@ async function updateLastSeen() {
 async function init() {
   startAuthClock();
   startServerUptime();
-  handlePasswordUpdateFromLink(); // handle ?reset=1 redirect
   const session = await getSession();
   if (session) {
     currentUser = session.user;
@@ -1009,7 +1008,7 @@ window.handleResetPassword = async function() {
   if (!email) return showError('Please enter your email');
   btn.disabled = true; btn.textContent = '[ SENDING... ]';
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname + '?reset=1',
+    redirectTo: window.location.origin + '/Vonnie-Studio-Wiki/reset.html',
   });
   if (error) {
     showError(error.message);
@@ -1019,28 +1018,6 @@ window.handleResetPassword = async function() {
     btn.disabled = false; btn.textContent = '[ SEND RESET LINK → ]';
   }
 };
-
-// Handle password update after clicking reset link (redirected back with token)
-async function handlePasswordUpdateFromLink() {
-  const hash = window.location.hash;
-  // Supabase embeds #access_token=...&type=recovery in the URL after reset
-  if (!hash.includes('type=recovery') && !new URLSearchParams(window.location.search).has('reset')) return;
-
-  // Show a simple update password UI
-  const newPass = prompt('Enter your new password (min 8 characters):');
-  if (!newPass || newPass.length < 8) {
-    alert('Password must be at least 8 characters.');
-    return;
-  }
-  const { error } = await supabase.auth.updateUser({ password: newPass });
-  if (error) {
-    alert('Error: ' + error.message);
-  } else {
-    alert('✓ Password updated! You can now log in.');
-    // Clean URL
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-}
 
 window.handleLogin = async function() {
   clearAuthMessages();
