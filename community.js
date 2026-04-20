@@ -540,170 +540,208 @@ window.resetGlobalBrain = async function() {
 
 
 // ============================================================
-//  @ MENTION SYSTEM
+//  📊 POLL SYSTEM
 // ============================================================
-let mentionState = {
-  active: false,
-  query: '',
-  startPos: -1,
-  selectedIdx: 0,
-  results: [],
+let pollDurationHours = 24;
+
+window.openPollModal = function() {
+  document.getElementById('pollQuestion').value = '';
+  // Reset to 2 options
+  const list = document.getElementById('pollOptionsList');
+  list.innerHTML = `
+    <div class="poll-option-row"><input class="poll-option-input" placeholder="Option 1" maxlength="60"></div>
+    <div class="poll-option-row"><input class="poll-option-input" placeholder="Option 2" maxlength="60"></div>`;
+  // Reset duration
+  pollDurationHours = 24;
+  document.querySelectorAll('.poll-dur-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.hours === '24'));
+  document.getElementById('pollModal').classList.add('open');
+  setTimeout(() => document.getElementById('pollQuestion').focus(), 100);
 };
-let allKnownUsers = []; // cache of { username, avatar_color, avatar_url, role }
 
-// Build user list from presence + profiles cache
-async function refreshMentionUserList() {
-  try {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id,username,avatar_color,avatar_url,role')
-      .order('username');
-    allKnownUsers = data || [];
-  } catch(e) {}
-}
+window.closePollModal = function() {
+  document.getElementById('pollModal').classList.remove('open');
+};
 
-function getMentionSuggestions(query) {
-  const q = query.toLowerCase();
-  return allKnownUsers
-    .filter(u => u.username?.toLowerCase().startsWith(q) && u.id !== currentUser?.id)
-    .slice(0, 6);
-}
+window.addPollOption = function() {
+  const list = document.getElementById('pollOptionsList');
+  const count = list.children.length;
+  if (count >= 6) return;
+  const row = document.createElement('div');
+  row.className = 'poll-option-row';
+  row.innerHTML = `<input class="poll-option-input" placeholder="Option ${count+1}" maxlength="60">
+    <button class="poll-option-del" onclick="this.parentElement.remove()" title="Remove">✕</button>`;
+  list.appendChild(row);
+  row.querySelector('input').focus();
+};
 
-function openMentionDropdown(results) {
-  const dd = document.getElementById('mentionDropdown');
-  if (!dd) return;
-  dd.innerHTML = '';
-  if (!results.length) { dd.classList.remove('open'); return; }
+window.selectPollDuration = function(btn) {
+  document.querySelectorAll('.poll-dur-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  pollDurationHours = parseInt(btn.dataset.hours);
+};
 
-  results.forEach((u, i) => {
-    const item = document.createElement('div');
-    item.className = 'mention-item' + (i === mentionState.selectedIdx ? ' selected' : '');
-    const avStyle = u.avatar_url ? 'background:transparent;' : `background:${u.avatar_color||'#00d4ff'};`;
-    const avInner = u.avatar_url
-      ? `<img src="${u.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`
-      : (u.username?.[0]?.toUpperCase() || '?');
-    const roleLabel = u.role && u.role !== 'member' ? `<span class="mention-item-role">[${u.role.toUpperCase()}]</span>` : '';
-    item.innerHTML = `
-      <div class="mention-item-avatar" style="${avStyle}">${avInner}</div>
-      <span class="mention-item-name">@${escHtml(u.username)}</span>
-      ${roleLabel}`;
-    item.onclick = () => insertMention(u.username);
-    dd.appendChild(item);
-  });
-  dd.classList.add('open');
-}
+window.submitPoll = async function() {
+  const question = document.getElementById('pollQuestion').value.trim();
+  if (!question) return;
+  const inputs = document.querySelectorAll('#pollOptionsList .poll-option-input');
+  const options = [...inputs].map(i => i.value.trim()).filter(Boolean);
+  if (options.length < 2) return;
 
-function closeMentionDropdown() {
-  const dd = document.getElementById('mentionDropdown');
-  if (dd) dd.classList.remove('open');
-  mentionState.active = false;
-  mentionState.query = '';
-  mentionState.startPos = -1;
-  mentionState.selectedIdx = 0;
-}
+  const btn = document.getElementById('pollSubmitBtn');
+  btn.disabled = true; btn.textContent = '[ CREATING... ]';
 
-function insertMention(username) {
-  const input = document.getElementById('commInput');
-  const before = input.value.slice(0, mentionState.startPos);
-  const after  = input.value.slice(input.selectionStart);
-  input.value = before + '@' + username + ' ' + after;
-  const newPos = before.length + username.length + 2;
-  input.setSelectionRange(newPos, newPos);
-  input.focus();
-  closeMentionDropdown();
-  onInputChange(input);
-}
+  const expiresAt = pollDurationHours > 0
+    ? new Date(Date.now() + pollDurationHours * 3600 * 1000).toISOString()
+    : null;
 
-// Extract @mentions from message content
-function extractMentions(content) {
-  const matches = content.match(/@([a-zA-Z0-9_]+)/g) || [];
-  return [...new Set(matches.map(m => m.slice(1).toLowerCase()))];
-}
+  // Insert poll to DB
+  const { data: poll, error } = await supabase.from('polls').insert({
+    room_id:    currentRoomId,
+    creator_id: currentUser.id,
+    question,
+    options:    options.map((text, i) => ({ id: i, text, votes: 0 })),
+    expires_at: expiresAt,
+    total_votes: 0,
+  }).select().single();
 
-// Send mention notification via Supabase
-async function notifyMentions(content, msgId) {
-  const mentioned = extractMentions(content);
-  if (!mentioned.length) return;
-  const targets = allKnownUsers.filter(u =>
-    mentioned.includes(u.username?.toLowerCase()) && u.id !== currentUser?.id
-  );
-  if (!targets.length) return;
-  // Store in mentions table
-  try {
-    await supabase.from('mentions').insert(
-      targets.map(u => ({
-        message_id:  msgId,
-        from_user:   currentUser.id,
-        to_user:     u.id,
-        room_id:     currentRoomId,
-        content:     content.slice(0, 100),
-        created_at:  new Date().toISOString(),
-      }))
-    );
-  } catch(e) {} // mentions table optional — notifications still work via realtime
-}
-
-// Load unread mentions count
-async function loadUnreadMentions() {
-  try {
-    const { count } = await supabase
-      .from('mentions')
-      .select('*', { count: 'exact', head: true })
-      .eq('to_user', currentUser.id)
-      .eq('read', false);
-    updateMentionBadge(count || 0);
-  } catch(e) {}
-}
-
-function updateMentionBadge(count) {
-  let badge = document.getElementById('mentionNavBadge');
-  const nav = document.getElementById('navAvatar');
-  if (!nav) return;
-  if (!badge) {
-    nav.style.position = 'relative';
-    badge = document.createElement('div');
-    badge.id = 'mentionNavBadge';
-    badge.className = 'mention-badge';
-    nav.appendChild(badge);
+  if (error) {
+    btn.disabled = false; btn.textContent = '[ CREATE POLL ]';
+    console.error('Poll error:', error);
+    return;
   }
-  badge.textContent = count > 9 ? '9+' : count;
-  badge.style.display = count > 0 ? 'flex' : 'none';
+
+  // Insert message linking to poll
+  const { data: msg } = await supabase.from('messages').insert({
+    user_id:  currentUser.id,
+    room_id:  currentRoomId,
+    content:  null,
+    poll_id:  poll.id,
+  }).select().single();
+
+  if (msg) {
+    localRenderedIds.add(msg.id);
+    renderMessage({
+      ...msg,
+      poll,
+      profiles:   currentProfile,
+      userBadges: [],
+      reactions:  [],
+      replyMsg: null, replyProf: null, replyCount: 0,
+    }, false, false, true);
+    scrollToBottom();
+  }
+
+  closePollModal();
+  btn.disabled = false; btn.textContent = '[ CREATE POLL ]';
+};
+
+// Render poll bubble inside a message group
+function renderPollBubble(msgId, poll) {
+  if (!poll) return '';
+  const now = Date.now();
+  const expired = poll.expires_at && new Date(poll.expires_at) < now;
+  const total = poll.total_votes || 0;
+
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let metaParts = [`${total} vote${total!==1?'s':''}`];
+  if (poll.expires_at) {
+    const exp = new Date(poll.expires_at);
+    if (expired) {
+      metaParts.push('Closed');
+    } else {
+      const diff = Math.ceil((exp - now) / 60000);
+      metaParts.push(diff < 60 ? `${diff}m left` : diff < 1440 ? `${Math.floor(diff/60)}h left` : `${Math.floor(diff/1440)}d left`);
+    }
+  }
+
+  const optionsHtml = (poll.options || []).map(opt => {
+    const pct = total > 0 ? Math.round((opt.votes || 0) / total * 100) : 0;
+    const voted = (poll.my_vote === opt.id);
+    return `<button class="poll-option-btn" onclick="castVote('${poll.id}',${opt.id},'${msgId}')" ${expired ? 'disabled' : ''}>
+      <div class="poll-option-bar-wrap ${voted ? 'voted' : ''}">
+        <div class="poll-option-fill ${voted ? 'voted' : ''}" style="width:${pct}%"></div>
+        <span class="poll-option-label">${escHtml(opt.text)}</span>
+        <span class="poll-option-pct">${pct}%</span>
+      </div>
+      <span class="poll-option-check">${voted ? '✓' : ''}</span>
+    </button>`;
+  }).join('');
+
+  return `<div class="poll-bubble" id="poll-${poll.id}">
+    <div class="poll-bubble-question">📊 ${escHtml(poll.question)}${expired ? '<span class="poll-closed-badge">CLOSED</span>' : ''}</div>
+    <div class="poll-bubble-meta">${metaParts.join(' · ')}</div>
+    ${optionsHtml}
+    <div class="poll-total">${total} vote${total!==1?'s':''} total</div>
+  </div>`;
 }
 
-// Subscribe to realtime mention notifications
-function subscribeMentions() {
+window.castVote = async function(pollId, optionId, msgId) {
   if (!currentUser) return;
-  supabase.channel('mentions-rt-' + currentUser.id)
-    .on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'mentions',
-        filter: `to_user=eq.${currentUser.id}` },
-      (payload) => {
-        loadUnreadMentions();
-        // Show toast notification
-        const from = allKnownUsers.find(u => u.id === payload.new.from_user)?.username || 'Someone';
-        showMentionToast(from, payload.new.content, payload.new.room_id);
-      })
-    .subscribe();
+  try {
+    // Check existing vote
+    const { data: existing } = await supabase
+      .from('poll_votes')
+      .select('id, option_id')
+      .eq('poll_id', pollId)
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.option_id === optionId) return; // already voted same
+      // Change vote — remove old, add new
+      await supabase.from('poll_votes').delete().eq('id', existing.id);
+    }
+
+    await supabase.from('poll_votes').insert({
+      poll_id:   pollId,
+      user_id:   currentUser.id,
+      option_id: optionId,
+    });
+
+    // Refresh poll display
+    await refreshPollBubble(pollId, msgId);
+  } catch(e) { console.error('Vote error:', e); }
+};
+
+async function refreshPollBubble(pollId, msgId) {
+  const [{ data: poll }, { data: myVote }, { data: allVotes }] = await Promise.all([
+    supabase.from('polls').select('*').eq('id', pollId).single(),
+    supabase.from('poll_votes').select('option_id').eq('poll_id', pollId).eq('user_id', currentUser.id).maybeSingle(),
+    supabase.from('poll_votes').select('option_id').eq('poll_id', pollId),
+  ]);
+  if (!poll) return;
+
+  // Tally votes
+  const tally = {};
+  (allVotes || []).forEach(v => { tally[v.option_id] = (tally[v.option_id] || 0) + 1; });
+  poll.options = poll.options.map(o => ({ ...o, votes: tally[o.id] || 0 }));
+  poll.total_votes = allVotes?.length || 0;
+  poll.my_vote = myVote?.option_id ?? null;
+
+  const el = document.getElementById('poll-' + pollId);
+  if (el) {
+    const temp = document.createElement('div');
+    temp.innerHTML = renderPollBubble(msgId, poll);
+    el.replaceWith(temp.firstElementChild);
+  }
 }
 
-function showMentionToast(fromUser, content, roomId) {
-  let toast = document.getElementById('mentionToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'mentionToast';
-    toast.style.cssText = `position:fixed;top:68px;left:50%;transform:translateX(-50%);
-      background:var(--bg-card);border:1px solid rgba(192,132,252,.5);
-      box-shadow:0 4px 20px rgba(192,132,252,.3);
-      font-family:var(--mono);font-size:11px;color:#c084fc;
-      padding:8px 16px;z-index:9100;white-space:nowrap;
-      animation:fadeUp .2s ease;cursor:pointer;`;
-    toast.onclick = () => { toast.remove(); };
-    document.body.appendChild(toast);
-  }
-  toast.innerHTML = `🔔 <strong>@${escHtml(fromUser)}</strong> mentioned you: ${escHtml(content?.slice(0,40))}${content?.length>40?'…':''}`;
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => toast?.remove(), 5000);
-  playBeep();
+// Load poll data for a message
+async function loadPollForMsg(msg) {
+  if (!msg.poll_id) return null;
+  const [{ data: poll }, { data: myVote }, { data: allVotes }] = await Promise.all([
+    supabase.from('polls').select('*').eq('id', msg.poll_id).single(),
+    supabase.from('poll_votes').select('option_id').eq('poll_id', msg.poll_id).eq('user_id', currentUser.id).maybeSingle(),
+    supabase.from('poll_votes').select('option_id').eq('poll_id', msg.poll_id),
+  ]);
+  if (!poll) return null;
+  const tally = {};
+  (allVotes || []).forEach(v => { tally[v.option_id] = (tally[v.option_id] || 0) + 1; });
+  poll.options = poll.options.map(o => ({ ...o, votes: tally[o.id] || 0 }));
+  poll.total_votes = allVotes?.length || 0;
+  poll.my_vote = myVote?.option_id ?? null;
+  return poll;
 }
 
 // ============================================================
@@ -846,9 +884,6 @@ async function showCommunity() {
   initNotifications();
   checkMuted();
   updateLastSeen(); // track last active + streak
-  refreshMentionUserList(); // load users for @ suggest
-  subscribeMentions();      // realtime mention notifications
-  loadUnreadMentions();     // unread badge on nav
 }
 
 // ============================================================
@@ -1102,6 +1137,7 @@ async function loadMessages() {
     msg.replyMsg=replyMap[msg.reply_to]||null;
     msg.replyProf=msg.replyMsg?(profileMap[msg.replyMsg.user_id]||null):null;
     msg.replyCount=replyCountMap[msg.id]||0;
+    msg.poll = null; // will be loaded async below
     const isUnread = lastSeen && new Date(msg.created_at) > new Date(lastSeen) && msg.user_id !== currentUser?.id && !isBotRow;
     renderMessage(msg, false, isUnread && !firstUnreadEl);
     if (isUnread && !firstUnreadEl) {
@@ -1111,6 +1147,20 @@ async function loadMessages() {
 
   // Mark last seen
   saveLastSeen(currentRoomId);
+  // Async load polls for messages that have poll_id
+  const pollMsgs = data.filter(m => m.poll_id);
+  if (pollMsgs.length) {
+    Promise.all(pollMsgs.map(async m => {
+      const poll = await loadPollForMsg(m);
+      if (poll) {
+        const group = document.querySelector(`[data-msg-id="${m.id}"]`);
+        if (group) {
+          const existing = group.querySelector('.poll-bubble');
+          if (!existing) group.insertAdjacentHTML('beforeend', renderPollBubble(m.id, poll));
+        }
+      }
+    }));
+  }
 
   // Double rAF: first frame = DOM appended, second frame = layout measured
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -1233,6 +1283,7 @@ function renderMessage(msg, prepend=false, isFirstUnread=false, animate=false) {
                     : `msg-bubble${isOwn?' own':''}`;
   if(msg.content) html+=`<div class="${bubbleClass}">${formatText(msg.content)}</div>`;
   if(msg.image_url) html+=`<img class="msg-img" src="${msg.image_url}" alt="image" onclick="openLightbox('${msg.image_url}')">`;
+  if(msg.poll) html += renderPollBubble(msg.id, msg.poll);
   html+=`<div class="msg-reactions" id="reactions-${msg.id}"></div>`;
 
   // Thread button — show if message has replies
@@ -1281,14 +1332,9 @@ function renderReactionPills(msgId, reactions) {
 }
 
 function formatText(raw){
-  const myUsername = currentProfile?.username?.toLowerCase();
   return escHtml(raw)
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/@([a-zA-Z0-9_]+)/g, (match, name) => {
-      const isMe = myUsername && name.toLowerCase() === myUsername;
-      return `<span class="msg-mention${isMe?' is-me':''}" onclick="viewProfile('${name}')">${escHtml(match)}</span>`;
-    })
     .replace(/\n/g,'<br>');
 }
 function escHtml(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -1404,6 +1450,11 @@ function subscribeRealtime() {
 
         const isOthers = payload.new.user_id !== currentUser?.id;
 
+        // Load poll if needed
+        let rtPoll = null;
+        if (payload.new.poll_id) {
+          rtPoll = await loadPollForMsg(payload.new);
+        }
         renderMessage({
           ...payload.new,
           profiles:   profile || null,
@@ -1412,6 +1463,7 @@ function subscribeRealtime() {
           replyMsg,
           replyProf,
           replyCount: 0,
+          poll: rtPoll,
         }, false, false, true);
         saveLastSeen(roomId);
         if (isOthers) triggerNotification(profile?.username || 'Someone', payload.new.content);
@@ -1582,9 +1634,8 @@ window.sendMessage = async function() {
     }
     renderMessage({...inserted,profiles:currentProfile,userBadges:badges.map(b=>b.badge_id),reactions:[],replyMsg,replyProf,replyCount:0}, false, false, true);
     scrollToBottom();
+    // Check for new achievement badges (fire & forget)
     checkMessageBadges(currentUser.id, !!image_url);
-    // Mention notifications (fire & forget)
-    if (content) notifyMentions(content, inserted.id);
     // Slow mode cooldown
     if (currentRoomMode === 'slow') startSlowCooldown();
   }
@@ -1632,12 +1683,7 @@ function closeReactPicker(){
   document.getElementById('reactMiniPicker').classList.remove('open');
   reactPickerMsgId=null;
 }
-document.addEventListener('click', (e) => {
-  closeReactPicker();
-  if (!e.target.closest('#mentionDropdown') && !e.target.closest('#commInput')) {
-    closeMentionDropdown();
-  }
-});
+document.addEventListener('click',()=>closeReactPicker());
 
 window.toggleReaction=async function(msgId,emoji){
   try{
@@ -1672,34 +1718,7 @@ window.cancelReply=function(){
 // ============================================================
 //  INPUT
 // ============================================================
-window.handleInputKey=function(e){
-  // ── Mention dropdown keyboard nav ─────────────────────
-  if (mentionState.active && mentionState.results.length) {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      mentionState.selectedIdx = (mentionState.selectedIdx + 1) % mentionState.results.length;
-      openMentionDropdown(mentionState.results);
-      return;
-    }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      mentionState.selectedIdx = (mentionState.selectedIdx - 1 + mentionState.results.length) % mentionState.results.length;
-      openMentionDropdown(mentionState.results);
-      return;
-    }
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      const u = mentionState.results[mentionState.selectedIdx];
-      if (u) insertMention(u.username);
-      return;
-    }
-    if (e.key === 'Escape') {
-      closeMentionDropdown();
-      return;
-    }
-  }
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
-};
+window.handleInputKey=function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}};
 window.onInputChange=function(el){
   el.style.height='auto';
   el.style.height=Math.min(el.scrollHeight,120)+'px';
@@ -1707,23 +1726,6 @@ window.onInputChange=function(el){
   const c=document.getElementById('charCounter');
   if(rem<=50){c.textContent=rem+' chars left';c.className='char-counter '+(rem<=20?'danger':'warn');}
   else{c.textContent='';c.className='char-counter';}
-  // ── Mention detection ─────────────────────────────────
-  const cursor = el.selectionStart;
-  const textBefore = el.value.slice(0, cursor);
-  const atMatch = textBefore.match(/@([a-zA-Z0-9_]*)$/);
-  if (atMatch) {
-    const query = atMatch[1];
-    const startPos = cursor - query.length - 1; // position of @
-    mentionState.active = true;
-    mentionState.query = query;
-    mentionState.startPos = startPos;
-    const results = getMentionSuggestions(query);
-    mentionState.results = results;
-    mentionState.selectedIdx = 0;
-    openMentionDropdown(results);
-  } else {
-    closeMentionDropdown();
-  }
 };
 window.insertFmt=function(before,after){
   const input=document.getElementById('commInput');
@@ -2051,7 +2053,7 @@ const _origSelectRoomMob = window.selectRoom;
 // ============================================================
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    closeLightbox();closeProfileView();closeProfileEdit();cancelReply();closeReactPicker();closeThread();closeSearch();
+    closeLightbox();closeProfileView();closeProfileEdit();cancelReply();closeReactPicker();closeThread();closeSearch();closePollModal();
     document.getElementById('emojiPicker').classList.remove('open');emojiPickerOpen=false;
   }
 });
