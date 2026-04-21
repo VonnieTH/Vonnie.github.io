@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reset Password — VonnieStudio</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+.reset-screen{
+  min-height:100vh;display:flex;align-items:center;
+  justify-content:center;background:var(--bg);padding:20px;
+}
+.reset-window{
+  width:420px;max-width:95vw;
+  background:var(--bg-card);
+  border:1px solid var(--cyan-border);
+  box-shadow:0 0 40px var(--cyan-glow);
+  position:relative;animation:fadeUp .4s ease both;
+}
+.reset-window::before,.reset-window::after{
+  content:"";position:absolute;width:8px;height:8px;
+  border-color:var(--cyan);border-style:solid;
+}
+.reset-window::before{top:-1px;left:-1px;border-width:2px 0 0 2px;}
+.reset-window::after{bottom:-1px;right:-1px;border-width:0 2px 2px 0;}
+.reset-titlebar{
+  background:rgba(0,212,255,.08);
+  border-bottom:1px solid rgba(0,212,255,.3);
+  padding:8px 16px;font-family:var(--mono);font-size:10px;
+  color:var(--cyan);letter-spacing:.14em;
+  display:flex;justify-content:space-between;
+}
+.reset-body{padding:28px 24px;}
+.reset-logo{text-align:center;margin-bottom:24px;}
+.reset-logo-title{
+  font-family:var(--mono);font-size:18px;
+  color:var(--cyan);letter-spacing:.08em;
+  text-shadow:0 0 16px var(--cyan);
+}
+.reset-logo-sub{
+  font-family:var(--mono);font-size:9px;
+  color:var(--text-dim);letter-spacing:.16em;margin-top:4px;
+}
+.reset-form{display:flex;flex-direction:column;gap:14px;}
+.reset-field{display:flex;flex-direction:column;gap:5px;}
+.reset-label{
+  font-family:var(--mono);font-size:9px;
+  color:var(--text-dim);letter-spacing:.12em;
+}
+.reset-input{
+  background:rgba(0,212,255,.04);
+  border:1px solid rgba(0,212,255,.25);
+  padding:9px 12px;font-family:var(--mono);
+  font-size:12px;color:var(--text-main);
+  outline:none;transition:border-color .15s;
+  caret-color:var(--cyan);
+}
+.reset-input:focus{border-color:var(--cyan);}
+.reset-input::placeholder{color:var(--text-dim);}
+.reset-hint{font-family:var(--mono);font-size:9px;color:var(--text-dim);}
+.reset-btn{
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  padding:10px;border:1px solid var(--cyan);
+  background:var(--cyan-dim);color:var(--cyan);
+  cursor:pointer;transition:all .15s;margin-top:4px;
+}
+.reset-btn:hover{background:rgba(0,212,255,.25);}
+.reset-btn:disabled{opacity:.5;cursor:not-allowed;}
+.reset-error{
+  font-family:var(--mono);font-size:10px;color:#ff6b6b;
+  background:rgba(255,107,107,.08);
+  border:1px solid rgba(255,107,107,.3);
+  padding:8px 12px;display:none;
+}
+.reset-error.show{display:block;}
+.reset-success{
+  font-family:var(--mono);font-size:10px;color:var(--green);
+  background:rgba(64,255,128,.06);
+  border:1px solid rgba(64,255,128,.3);
+  padding:8px 12px;display:none;text-align:center;
+}
+.reset-success.show{display:block;}
+.reset-back{
+  font-family:var(--mono);font-size:9px;color:var(--text-dim);
+  text-decoration:none;display:flex;align-items:center;
+  gap:6px;margin-top:12px;justify-content:center;
+  transition:color .15s;background:none;border:none;
+  cursor:pointer;width:100%;
+}
+.reset-back:hover{color:var(--cyan);}
+/* Password strength bar */
+.strength-wrap{height:3px;background:rgba(0,212,255,.08);margin-top:4px;border-radius:2px;overflow:hidden;}
+.strength-bar{height:100%;width:0;border-radius:2px;transition:width .3s,background .3s;}
+.strength-label{font-family:var(--mono);font-size:8px;color:var(--text-dim);margin-top:3px;text-align:right;}
+/* Loading state */
+.reset-loading{
+  display:none;flex-direction:column;align-items:center;
+  gap:14px;padding:20px 0;text-align:center;
+}
+.reset-loading.show{display:flex;}
+.reset-loading-bar{width:200px;height:2px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);}
+.reset-loading-fill{height:100%;background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:loadingPulse 1.2s ease infinite;}
+@keyframes loadingPulse{0%{width:0%}50%{width:70%}100%{width:100%}}
+.reset-loading-txt{font-family:var(--mono);font-size:11px;color:var(--cyan);letter-spacing:.1em;}
+</style>
+</head>
+<body>
+
+<div class="reset-screen">
+  <div class="reset-window">
+    <div class="reset-titlebar">
+      <span>RESET_PASSWORD.EXE</span>
+      <span id="resetClock">00:00</span>
+    </div>
+    <div class="reset-body">
+
+      <div class="reset-logo">
+        <div class="reset-logo-title">VONNIE<span style="color:var(--text-main)">STUDIO</span></div>
+        <div class="reset-logo-sub">PASSWORD RECOVERY</div>
+      </div>
+
+      <!-- Checking token state -->
+      <div class="reset-loading" id="loadingState">
+        <div class="reset-loading-txt">Verifying reset link...</div>
+        <div class="reset-loading-bar"><div class="reset-loading-fill"></div></div>
+      </div>
+
+      <!-- Invalid/expired token -->
+      <div id="invalidState" style="display:none;">
+        <div class="reset-success show" style="color:#ff6b6b;border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.06);">
+          ⚠ This reset link is invalid or has expired.<br>Please request a new one.
+        </div>
+        <a href="community.html" class="reset-back">← Back to login</a>
+      </div>
+
+      <!-- New password form -->
+      <div id="resetFormState" style="display:none;">
+        <div class="reset-error" id="resetError"></div>
+        <div class="reset-success" id="resetSuccess"></div>
+        <div class="reset-form">
+          <div class="reset-field">
+            <label class="reset-label">NEW PASSWORD</label>
+            <input type="password" class="reset-input" id="newPassword"
+              placeholder="At least 8 characters"
+              oninput="checkStrength(this.value)"
+              autocomplete="new-password" minlength="8">
+            <div class="strength-wrap"><div class="strength-bar" id="strengthBar"></div></div>
+            <div class="strength-label" id="strengthLabel"></div>
+          </div>
+          <div class="reset-field">
+            <label class="reset-label">CONFIRM PASSWORD</label>
+            <input type="password" class="reset-input" id="confirmPassword"
+              placeholder="Repeat your new password"
+              autocomplete="new-password">
+          </div>
+          <button class="reset-btn" id="resetSubmitBtn" onclick="submitNewPassword()">
+            [ SET NEW PASSWORD → ]
+          </button>
+          <a href="community.html" class="reset-back">← Cancel</a>
+        </div>
+      </div>
+
+      <!-- Done state -->
+      <div id="doneState" style="display:none;">
+        <div class="reset-success show">
+          ✓ Password updated successfully!<br>
+          You can now log in with your new password.
+        </div>
+        <a href="community.html" style="margin-top:12px;" class="reset-btn"
+          onclick="this.style.textAlign='center';this.style.display='block'">
+          [ GO TO LOGIN → ]
+        </a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const supabase = createClient(
+  'https://hfwywsfqwnlavhnmepyj.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhmd3l3c2Zxd25sYXZobm1lcHlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMDY5OTYsImV4cCI6MjA5MDc4Mjk5Nn0.tzytS8S0EzA0RylSt3RM0Y36zxlQVU0KyxKstQlSPX8'
+);
+
+// ── Clock ──────────────────────────────────────────────────
+setInterval(() => {
+  const now = new Date();
+  const el = document.getElementById('resetClock');
+  if (el) el.textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0');
+}, 1000);
+
+// ── Check if this is a valid recovery session ──────────────
+async function init() {
+  // Supabase embeds the token in the URL hash after clicking email link
+  // It sets the session automatically — we just check if session type is 'recovery'
+  const { data: { session }, error } = await supabase.auth.getSession();
+
+  document.getElementById('loadingState').classList.remove('show');
+
+  if (session?.user) {
+    // Valid session from recovery link
+    document.getElementById('resetFormState').style.display = '';
+    document.getElementById('newPassword').focus();
+  } else {
+    // No valid recovery session
+    document.getElementById('invalidState').style.display = '';
+  }
+}
+
+// ── Password strength checker ──────────────────────────────
+window.checkStrength = function(val) {
+  const bar   = document.getElementById('strengthBar');
+  const label = document.getElementById('strengthLabel');
+  if (!val) { bar.style.width='0'; label.textContent=''; return; }
+
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (val.length >= 12) score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+
+  const levels = [
+    { w:'20%',  bg:'#ff6b6b', txt:'Weak' },
+    { w:'40%',  bg:'#ff8c00', txt:'Fair' },
+    { w:'60%',  bg:'var(--gold)', txt:'Good' },
+    { w:'80%',  bg:'#40ff80', txt:'Strong' },
+    { w:'100%', bg:'#00d4ff', txt:'Very strong' },
+  ];
+  const lv = levels[Math.min(score, 4)];
+  bar.style.width = lv.w;
+  bar.style.background = lv.bg;
+  label.textContent = lv.txt;
+  label.style.color = lv.bg;
+};
+
+// ── Submit new password ────────────────────────────────────
+window.submitNewPassword = async function() {
+  const newPass  = document.getElementById('newPassword').value;
+  const confirm  = document.getElementById('confirmPassword').value;
+  const btn      = document.getElementById('resetSubmitBtn');
+  const errorEl  = document.getElementById('resetError');
+  const successEl = document.getElementById('resetSuccess');
+
+  errorEl.classList.remove('show');
+  successEl.classList.remove('show');
+
+  if (newPass.length < 8) {
+    errorEl.textContent = 'Password must be at least 8 characters';
+    errorEl.classList.add('show'); return;
+  }
+  if (newPass !== confirm) {
+    errorEl.textContent = 'Passwords do not match';
+    errorEl.classList.add('show'); return;
+  }
+
+  btn.disabled = true; btn.textContent = '[ UPDATING... ]';
+
+  const { error } = await supabase.auth.updateUser({ password: newPass });
+
+  if (error) {
+    errorEl.textContent = 'Error: ' + error.message;
+    errorEl.classList.add('show');
+    btn.disabled = false; btn.textContent = '[ SET NEW PASSWORD → ]';
+  } else {
+    document.getElementById('resetFormState').style.display = 'none';
+    document.getElementById('doneState').style.display = '';
+    await supabase.auth.signOut(); // sign out so user logs in fresh
+  }
+};
+
+init();
+</script>
+</body>
+</html>
