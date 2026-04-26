@@ -1,2 +1,2 @@
 /*
-  Content-Security-Policy: script-src 'self' 'unsafe-eval' cdn.jsdelivr.net *.supabase.co; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net; font-src 'self' cdn.jsdelivr.net data:; img-src 'self' data: blob: *.supabase.co; connect-src 'self' *.supabase.co wss://*.supabase.co api.groq.com *.workers.dev
+  Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: cdn.jsdelivr.net *.supabase.co wss://*.supabase.co api.groq.com *.workers.dev
