@@ -253,9 +253,3 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .law-card.active{border-color:rgba(64,255,128,.4);background:rgba(64,255,128,.04);}
 .law-name{font-size:10px;color:#f0c040;}
 .law-effect{font-size:8px;color:rgba(200,232,255,.4);margin-top:2px;}
-/* ── POPULATION SYSTEM ── */
-.eth-bar { display:flex; height:8px; border-radius:2px; overflow:hidden; margin:4px 0; }
-.eth-badge { font-size:7px; padding:2px 5px; border-radius:1px; border:1px solid; margin:1px; display:inline-block; }
-.res-chip { display:inline-flex; flex-direction:column; border:1px solid rgba(240,192,64,.2); padding:3px 7px; font-size:8px; margin:2px; }
-.res-chip-name { color:#f0c040; }
-.res-chip-sub { font-size:7px; color:rgba(200,232,255,.35); margin-top:1px; }
