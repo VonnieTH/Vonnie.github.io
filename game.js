@@ -194,7 +194,7 @@ function showTip(cx,cy,mx,my){
     const oid=ownership[pid];
     document.getElementById('tipN').textContent=p.name;
     document.getElementById('tipO').textContent=oid?('Owner: '+(nations[oid]?.name||'???')):'Unclaimed';
-    document.getElementById('tipT').textContent=p.terrain[0].toUpperCase()+p.terrain.slice(1);
+    document.getElementById('tipT').textContent=p.terrain[0].toUpperCase()+p.terrain.slice(1)+' · Pop: '+fmtPop(calcProvPop(p));
     tip.style.cssText='display:block;left:'+(cx+14)+'px;top:'+(cy-38)+'px;position:fixed;background:#0d0d1a;border:1px solid rgba(0,212,255,.3);padding:5px 8px;font-size:9px;color:#c8e8ff;pointer-events:none;z-index:600;';
     document.getElementById('tipN').style.cssText='color:#00d4ff;font-size:10px;margin-bottom:2px;';
     document.getElementById('tipO').style.cssText='color:#40ff80;font-size:8px;';
@@ -666,7 +666,8 @@ window.sNext=function(n){
   if(n===2){if(!document.getElementById('sN').value.trim()){toast('Enter nation name');return;}if(!document.getElementById('sR').value.trim()){toast('Enter ruler name');return;}}
   if(n===3){
     if(!pendCap){toast('Select a capital province first');return;}
-    document.getElementById('cfB').innerHTML='Nation: <b style="color:#00d4ff">'+document.getElementById('sN').value.trim()+'</b><br>Government: <b style="color:#f0c040">'+document.getElementById('sG').value+'</b><br>Ruler: <b>'+document.getElementById('sR').value.trim()+'</b><br>Capital: <b style="color:#40ff80">'+pendCap.name+'</b> ('+pendCap.terrain+')';
+    const ethn=document.getElementById('sEthn').value.trim();
+    document.getElementById('cfB').innerHTML='Nation: <b style="color:#00d4ff">'+document.getElementById('sN').value.trim()+'</b><br>Government: <b style="color:#f0c040">'+document.getElementById('sG').value+'</b><br>Ruler: <b>'+document.getElementById('sR').value.trim()+'</b>'+(ethn?'<br>Ethnicity: <b style="color:#40d4cc">'+ethn+'</b>':'')+'<br>Capital: <b style="color:#40ff80">'+pendCap.name+'</b> ('+pendCap.terrain+')';
   }
   ['s1','s2','s3'].forEach((id,i)=>document.getElementById(id).style.display=(i+1===n?'':'none'));
   document.getElementById('sLbl').textContent='STEP '+n+' OF 3 — '+['','IDENTITY','CAPITAL','CONFIRM'][n];
@@ -689,7 +690,7 @@ window.foundNation=async function(){
     lf?uploadAsset(lf,cu.id+'/lead_'+Date.now()+'.'+lf.name.split('.').pop()):null,
   ]);
   btn.textContent='[ FOUNDING... ]';
-  const{data:nat,error}=await sb.from('wc_nations').insert({name,gov,ruler,color,flag_url,leader_url,party_support:ps,owner_id:cu.id,capital_id:pendCap.id,gold:100,manpower:200,supply:150,stability:70,last_tick_at:new Date().toISOString()}).select().single();
+  const{data:nat,error}=await sb.from('wc_nations').insert({name,gov,ruler,color,flag_url,leader_url,party_support:ps,owner_id:cu.id,capital_id:pendCap.id,gold:100,manpower:200,supply:150,stability:70,last_tick_at:new Date().toISOString(),ethnicity:document.getElementById('sEthn').value.trim()||null}).select().single();
   if(error){toast('Error: '+error.message);btn.disabled=false;btn.textContent='[ FOUND NATION → ]';return;}
   await sb.from('wc_ownership').insert({province_id:pendCap.id,nation_id:nat.id});
   mn=nat;nations[nat.id]=nat;natColors[nat.id]=hexRgb(color);ownership[pendCap.id]=nat.id;
@@ -735,6 +736,30 @@ function refreshSb(){
 window.selProvById=function(pid){selProv=byId[pid];draw();showPanel(selProv);refreshSb();};
 
 // ── PROVINCE PANEL ─────────────────────────────────────────
+// ── POPULATION SYSTEM ─────────────────────────────────────
+// Population = base from terrain + manpower stat × multiplier
+// Displayed as millions (M) or thousands (K)
+const POP_TERRAIN_BASE = {plains:8,coast:7,hills:5,forest:4,mountain:3};
+function calcProvPop(prov){
+  const base = (POP_TERRAIN_BASE[prov.terrain]||4);
+  return Math.round((base * 0.7 + prov.manpower * 0.12) * 10) / 10; // in hundred-thousands
+}
+function fmtPop(v){
+  if(v>=10)return (v/10).toFixed(1)+'M';
+  return Math.round(v*100)+'K';
+}
+// Resources distribution summary for province
+function provResourceType(prov){
+  const types=[];
+  if(prov.gold>=12) types.push('💰 Wealthy');
+  else if(prov.gold>=8) types.push('🪙 Prosperous');
+  if(prov.manpower>=14) types.push('👥 Populous');
+  else if(prov.manpower>=10) types.push('👤 Settled');
+  if(prov.supply>=14) types.push('⚙ Industrial');
+  else if(prov.supply>=10) types.push('🌾 Agricultural');
+  return types.length?types.join(' · '):'🏚 Sparse';
+}
+
 function isAdj(pid){
   if(!mn)return false;
   // Use pre-built grid adjacency — accurate, no distance heuristics
@@ -760,9 +785,14 @@ function showPanel(p){
       nationRow+=`<div class="irow" style="align-items:center">${portHtml}<span class="ik">RULER</span><span class="iv cy">${owner.ruler}</span></div>`;
     }
     if(owner.stability!==undefined) nationRow+=row('STABILITY',owner.stability+'%',owner.stability>60?'gr':owner.stability>30?'':'rd');
+    if(owner.ethnicity) nationRow+=row('ETHNICITY',owner.ethnicity,'cy');
   }
 
-  let html=[capMark,row('TERRAIN',p.terrain),row('OWNER',owner?owner.name:'Unclaimed',owner?(isOwn?'gd':'rd'):'cy'),nationRow,'<div class="rdiv"></div>','<div class="rsec">YIELD / TICK</div>',row('Gold','+'+p.gold,'gd'),row('Manpower','+'+p.manpower,''),row('Supplies','+'+p.supply,''),'<div class="rdiv"></div>','<div class="rsec">ACTIONS</div>'].join('');
+  const popVal = calcProvPop(p);
+  const popStr = fmtPop(popVal);
+  const resType = provResourceType(p);
+
+  let html=[capMark,row('TERRAIN',p.terrain),row('POPULATION',popStr,''),row('RESOURCES',resType,''),row('OWNER',owner?owner.name:'Unclaimed',owner?(isOwn?'gd':'rd'):'cy'),nationRow,'<div class="rdiv"></div>','<div class="rsec">YIELD / TICK</div>',row('Gold','+'+p.gold,'gd'),row('Manpower','+'+p.manpower,''),row('Supplies','+'+p.supply,''),'<div class="rdiv"></div>','<div class="rsec">ACTIONS</div>'].join('');
 
   let acts='';
   if(!cu){
@@ -912,6 +942,9 @@ window.openFlagLeaderEditor=function(){
   }
   // Pre-fill ruler name
   document.getElementById('fleRuler').value=mn.ruler||'';
+  // Pre-fill ethnicity
+  const fleEthnEl=document.getElementById('fleEthn');
+  if(fleEthnEl)fleEthnEl.value=mn.ethnicity||'';
   // Show current flag/leader
   const cf=document.getElementById('fleCurrentFlag'),cl=document.getElementById('fleCurrentLeader');
   if(mn.flag_url){cf.src=mn.flag_url;cf.style.display='block';}else{cf.style.display='none';}
@@ -931,6 +964,8 @@ window.fleSubmit=async function(){
   const newRuler=document.getElementById('fleRuler').value.trim();
 
   let updates={ruler:newRuler||mn.ruler, flag_changed_at:new Date().toISOString()};
+  const newEthn=document.getElementById('fleEthn')?.value.trim();
+  if(newEthn)updates.ethnicity=newEthn;
 
   if(flagFile){
     const fu=await uploadAsset(flagFile, cu.id+'/flag_'+Date.now()+'.'+flagFile.name.split('.').pop());
@@ -1047,6 +1082,7 @@ window.toast=function(m){const t=document.getElementById('toast');t.textContent=
 // ── SQL SCHEMA HINT ────────────────────────────────────────
 // Run in Supabase SQL Editor: ensure last_tick_at column exists
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS last_tick_at TIMESTAMPTZ DEFAULT NOW();
+// ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnicity TEXT DEFAULT NULL;
 
 // ── INIT ───────────────────────────────────────────────────
 (async function(){
@@ -1147,6 +1183,32 @@ const LAWS = {
   state_media:    {cat:'Culture',     name:'State Media',         buffs:{stability:10,support:6},debuffs:{gold:-2},            govs:['Autocracy','Neo-Authoritarianism','Superiority Radicalism'],      req_ideology:35, enact_weeks:1},
   cultural_rev:   {cat:'Culture',     name:'Cultural Revolution', buffs:{support:15,stability:5},debuffs:{gold:-5,manpower:-5},govs:['Paperolutionary Left','Aesthetic Democracy','Post-Modernism'],   req_ideology:50, enact_weeks:3},
   heritage_prot:  {cat:'Culture',     name:'Heritage Protection', buffs:{stability:8,support:5}, debuffs:{},                   govs:['Traditionalist Right','Institutionalism','Paperist Democracy'],  req_ideology:25, enact_weeks:2},
+
+  // ── TRADE ──
+  trade_charter:  {cat:'Trade',       name:'Trade Charter',       buffs:{gold:12,supply:6},      debuffs:{stability:-3},       govs:['Classical Liberalism','Eclecticism','Paperist Democracy','Post-Modernism'], req_ideology:25, enact_weeks:2},
+  mercantilism:   {cat:'Trade',       name:'Mercantilism',        buffs:{gold:8,supply:10},       debuffs:{gold:-3},            govs:['Traditionalist Right','Institutionalism','Autocracy'],                      req_ideology:30, enact_weeks:2},
+  state_monopoly: {cat:'Trade',       name:'State Monopoly',      buffs:{gold:14,supply:8},       debuffs:{manpower:-4,support:-8},govs:['Paperolutionary Left','Autocracy','Neo-Authoritarianism'],              req_ideology:40, enact_weeks:3},
+  free_trade_zone:{cat:'Trade',       name:'Free Trade Zone',     buffs:{gold:18},                debuffs:{manpower:-6,stability:-4},govs:['Classical Liberalism','Post-Modernism','Anarchism'],                  req_ideology:35, enact_weeks:2},
+  embargo:        {cat:'Trade',       name:'Trade Embargo',       buffs:{manpower:6,stability:5}, debuffs:{gold:-12},           govs:['Superiority Radicalism','Third Positionism','Neo-Authoritarianism'],       req_ideology:40, enact_weeks:1},
+
+  // ── SCIENCE ──
+  research_fund:  {cat:'Science',     name:'Research Funding',    buffs:{gold:6,supply:10},       debuffs:{gold:-5},            govs:['Paperist Democracy','Classical Liberalism','Aesthetic Democracy','Institutionalism'],req_ideology:25,enact_weeks:3},
+  state_science:  {cat:'Science',     name:'State Science Bureau',buffs:{supply:14,stability:4},  debuffs:{gold:-8},            govs:['Institutionalism','Neo-Authoritarianism','Paperolutionary Left'],          req_ideology:35, enact_weeks:3},
+  open_source:    {cat:'Science',     name:'Open Knowledge Act',  buffs:{supply:8,support:8},     debuffs:{},                   govs:['Anarchism','Post-Modernism','Aesthetic Democracy','Paperist Democracy'],   req_ideology:20, enact_weeks:2},
+  mil_research:   {cat:'Science',     name:'Military Research',   buffs:{manpower:8,supply:12},   debuffs:{gold:-10,stability:-3},govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],    req_ideology:40, enact_weeks:3},
+
+  // ── SOCIAL ──
+  universal_edu:  {cat:'Social',      name:'Universal Education', buffs:{stability:8,manpower:6}, debuffs:{gold:-9},            govs:['Reformatorist Left','Paperist Democracy','Aesthetic Democracy'],           req_ideology:30, enact_weeks:4},
+  welfare_state:  {cat:'Social',      name:'Welfare State',       buffs:{manpower:10,stability:8},debuffs:{gold:-12},           govs:['Reformatorist Left','Paperolutionary Left','Paperist Democracy'],         req_ideology:40, enact_weeks:4},
+  caste_system:   {cat:'Social',      name:'Rigid Caste System',  buffs:{stability:12,supply:6},  debuffs:{support:-12,manpower:-6},govs:['Traditionalist Right','Autocracy','Superiority Radicalism'],         req_ideology:40, enact_weeks:2},
+  meritocracy:    {cat:'Social',      name:'Meritocratic Reform', buffs:{gold:8,stability:6},     debuffs:{support:-4},         govs:['Institutionalism','Classical Liberalism','Eclecticism'],                  req_ideology:30, enact_weeks:3},
+  social_credit:  {cat:'Social',      name:'Social Credit System',buffs:{stability:14,manpower:5},debuffs:{support:-16,gold:-4},govs:['Neo-Authoritarianism','Autocracy'],                                      req_ideology:50, enact_weeks:2},
+
+  // ── ENVIRONMENT ──
+  forest_law:     {cat:'Environment', name:'Forest Conservation', buffs:{supply:12,stability:4},  debuffs:{gold:-5},            govs:['Aesthetic Democracy','Reformatorist Left','Anarchism','Post-Modernism'],  req_ideology:20, enact_weeks:2},
+  agri_reform:    {cat:'Environment', name:'Agricultural Reform', buffs:{supply:16,manpower:6},   debuffs:{gold:-6},            govs:['Reformatorist Left','Traditionalist Right','Institutionalism'],            req_ideology:30, enact_weeks:3},
+  exploit_resource:{cat:'Environment',name:'Resource Exploitation',buffs:{gold:16,supply:8},      debuffs:{stability:-6,manpower:-4},govs:['Classical Liberalism','Third Positionism','Autocracy'],              req_ideology:35, enact_weeks:2},
+  eco_mandate:    {cat:'Environment', name:'Ecological Mandate',  buffs:{stability:6,support:10}, debuffs:{gold:-8,manpower:-4},govs:['Aesthetic Democracy','Post-Modernism','Anarchism'],                       req_ideology:25, enact_weeks:3},
 };
 
 // Pseudo-random number generator (deterministic from seed)
@@ -1313,11 +1375,11 @@ function renderLaws(){
     if(!cats[law.cat])cats[law.cat]=[];
     cats[law.cat].push({key,...law});
   });
-  const catOrder=['Government','Public Health','Freedom','Taxation','Economy','Military','Culture'];
+  const catOrder=['Government','Public Health','Freedom','Taxation','Economy','Military','Culture','Trade','Science','Social','Environment'];
   let html='<div style="font-size:8px;color:rgba(200,232,255,.3);margin-bottom:8px">Active: <span style="color:#f0c040">'+active.length+'/4</span> · Enacting: <span style="color:#00d4ff">'+Object.keys(pending).length+'</span></div>';
   catOrder.forEach(cat=>{
     if(!cats[cat])return;
-    const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff'}[cat]||'#aaa';
+    const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff',Trade:'#40d4cc',Science:'#c0e0ff',Social:'#ffb347',Environment:'#7fff7f'}[cat]||'#aaa';
     html+='<div style="font-size:8px;color:'+catColor+';letter-spacing:.14em;padding:5px 0 4px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:6px">◈ '+cat.toUpperCase()+'</div>';
     cats[cat].forEach(({key,name,buffs,debuffs,govs,req_ideology,enact_weeks})=>{
       const isActive=active.includes(key);

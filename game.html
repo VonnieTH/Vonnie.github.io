@@ -58,6 +58,7 @@
           <div class="gbonus" id="gB">+15% Gold, +10% Stability</div>
         </div>
         <div class="sfield" style="margin-top:8px"><label class="slbl">RULER NAME</label><input class="sinp" id="sR" placeholder="e.g. King Aldric I" maxlength="30"></div>
+        <div class="sfield" style="margin-top:8px"><label class="slbl">ETHNICITY / PEOPLE <span style="opacity:.4">(optional)</label><input class="sinp" id="sEthn" placeholder="e.g. Ironfen Dwarves, Sea Elves..." maxlength="40"></div>
         <div class="sfield" style="margin-top:8px"><label class="slbl">BANNER COLOR</label>
           <input type="color" id="sC" value="#f0c040" style="width:50px;height:26px;border:1px solid rgba(0,212,255,.3);background:transparent;cursor:pointer;padding:2px">
         </div>
@@ -231,6 +232,10 @@
       <div>
         <div class="fle-label">RULER NAME</div>
         <input class="fle-inp" id="fleRuler" placeholder="e.g. Queen Velaris I" maxlength="40">
+      </div>
+      <div style="margin-top:8px">
+        <div class="fle-label">ETHNICITY / PEOPLE <span style="opacity:.4">(your dominant culture group)</span></div>
+        <input class="fle-inp" id="fleEthn" placeholder="e.g. Sea Elves, Mountain Dwarves..." maxlength="40">
       </div>
       <div class="fle-cd" id="fleCooldown"></div>
       <button class="fle-submit" id="fleSubmit" onclick="fleSubmit()">[ SAVE CHANGES ]</button>
