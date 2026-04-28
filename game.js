@@ -21,6 +21,19 @@ const TICK_HOURS=1; // resources tick every 1 hour (offline)
 
 // ══ POPULATION & RESOURCE SYSTEM ══════════════════════════════════════════
 // Deterministic from province data — no DB changes needed for existing players
+
+// ── ETHNIC GROUPS (8 cultures in this world) ─────────────────────────────
+const ETHNIC_GROUPS = {
+  Valdren:   {color:'#5b8cff', trait:'Industrious',  goldMod:1.15, mpMod:1.0,  supMod:1.0,  desc:'Coastal traders known for commerce and shipbuilding.'},
+  Keth:      {color:'#e87a7a', trait:'Warlike',       goldMod:0.9,  mpMod:1.25, supMod:1.0,  desc:'Highland warriors, fierce and territorial by nature.'},
+  Orindar:   {color:'#40d4cc', trait:'Scholarly',     goldMod:1.1,  mpMod:0.9,  supMod:1.15, desc:'Plains cultivators, masters of agriculture and lore.'},
+  Tharune:   {color:'#f0c040', trait:'Wealthy',       goldMod:1.25, mpMod:0.85, supMod:0.95, desc:'Desert merchants who control ancient trade routes.'},
+  Sylvani:   {color:'#40ff80', trait:'Foragers',      goldMod:0.85, mpMod:1.1,  supMod:1.3,  desc:'Forest-dwellers in harmony with nature and beasts.'},
+  Morkai:    {color:'#9b6dff', trait:'Mystical',      goldMod:0.95, mpMod:0.95, supMod:1.2,  desc:'Mountain monks with deep spiritual and arcane traditions.'},
+  Draelen:   {color:'#ff9540', trait:'Nomadic',       goldMod:1.0,  mpMod:1.15, supMod:1.05, desc:'Steppe riders and raiders who adapt to any terrain.'},
+  Essen:     {color:'#ff6bff', trait:'Diplomatic',    goldMod:1.1,  mpMod:0.9,  supMod:1.1,  desc:'River-folk skilled in negotiation and cultural exchange.'},
+};
+
 // ── RESOURCES — 12 types across 5 categories ───────────────────────────────
 const RESOURCES = {
   // Agricultural
