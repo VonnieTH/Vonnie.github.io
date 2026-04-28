@@ -19,6 +19,125 @@ PROVINCES.forEach(p=>byId[p.id]=p);
 // Owner is determined by is_admin flag in profiles table
 const TICK_HOURS=1; // resources tick every 1 hour (offline)
 
+// ══ POPULATION & RESOURCE SYSTEM ══════════════════════════════════════════
+// Deterministic from province data — no DB changes needed for existing players
+// ── RESOURCES — 12 types across 5 categories ───────────────────────────────
+const RESOURCES = {
+  // Agricultural
+  wheat:    {cat:'Agriculture', icon:'🌾', name:'Wheat',    goldVal:2, mpVal:4,  supVal:3, terrains:['plains']},
+  livestock:{cat:'Agriculture', icon:'🐄', name:'Livestock', goldVal:3, mpVal:3,  supVal:4, terrains:['plains','hills']},
+  wine:     {cat:'Agriculture', icon:'🍇', name:'Wine',      goldVal:5, mpVal:1,  supVal:2, terrains:['hills','coast']},
+  // Industrial
+  iron:     {cat:'Industry',    icon:'⚙', name:'Iron',      goldVal:4, mpVal:5,  supVal:2, terrains:['mountain','hills']},
+  coal:     {cat:'Industry',    icon:'🪨', name:'Coal',      goldVal:3, mpVal:3,  supVal:5, terrains:['mountain','hills']},
+  timber:   {cat:'Industry',   icon:'🌲', name:'Timber',    goldVal:2, mpVal:2,  supVal:6, terrains:['forest']},
+  // Maritime
+  fish:     {cat:'Maritime',    icon:'🐟', name:'Fish',      goldVal:3, mpVal:2,  supVal:5, terrains:['coast']},
+  trade:    {cat:'Maritime',    icon:'⚓', name:'Trade Port', goldVal:8, mpVal:1,  supVal:2, terrains:['coast']},
+  // Strategic
+  horses:   {cat:'Strategic',   icon:'🐎', name:'Horses',    goldVal:2, mpVal:8,  supVal:3, terrains:['plains','hills']},
+  gems:     {cat:'Strategic',   icon:'💎', name:'Gems',      goldVal:10, mpVal:0, supVal:0, terrains:['mountain']},
+  // Luxury
+  spices:   {cat:'Luxury',      icon:'🌶', name:'Spices',    goldVal:8, mpVal:0,  supVal:1, terrains:['forest','coast']},
+  herbs:    {cat:'Luxury',      icon:'🌿', name:'Herbs',     goldVal:4, mpVal:0,  supVal:4, terrains:['forest','hills']},
+};
+
+// ── COMPUTE PROVINCE DATA (deterministic, no DB) ───────────────────────────
+
+// Get province population (in thousands) — based on terrain + id seed
+function getProvPop(pid){
+  const p = byId[pid]; if(!p) return {total:0,groups:{}};
+  const rng = mkRng(pid * 137 + 42);
+  // Base pop by terrain
+  const base = {plains:180,coast:140,hills:90,forest:70,mountain:50}[p.terrain]||80;
+  const total = Math.round(base + rng()*60 - 30);
+  // Assign 1-3 ethnic groups
+  const ethKeys = Object.keys(ETHNIC_GROUPS);
+  const numGroups = Math.floor(rng()*3)+1;
+  const groups = {};
+  let remaining = 100;
+  for(let i=0; i<numGroups; i++){
+    const idx = Math.floor(rng()*ethKeys.length);
+    const key = ethKeys[idx];
+    if(groups[key]) continue; // skip dup
+    const pct = i===numGroups-1 ? remaining : Math.round(rng()*(remaining-10*(numGroups-i-1))+5);
+    groups[key] = Math.min(pct, remaining);
+    remaining -= groups[key];
+    if(remaining<=0) break;
+  }
+  // If remaining left, give to first group
+  const firstKey = Object.keys(groups)[0];
+  if(firstKey && remaining>0) groups[firstKey] += remaining;
+  return { total: Math.max(10, total), groups };
+}
+
+// Get province resources (1-2 based on terrain)
+function getProvResources(pid){
+  const p = byId[pid]; if(!p) return [];
+  const rng = mkRng(pid * 251 + 17);
+  const terrain = p.terrain;
+  const matching = Object.entries(RESOURCES).filter(([,r])=>r.terrains.includes(terrain));
+  if(!matching.length) return [];
+  // Pick 1-2 resources
+  const count = rng() > 0.55 ? 2 : 1;
+  const picked = [];
+  const used = new Set();
+  for(let i=0;i<count;i++){
+    const idx = Math.floor(rng()*matching.length);
+    const [key] = matching[idx];
+    if(!used.has(key)){ used.add(key); picked.push(key); }
+  }
+  return picked;
+}
+
+// Get ethnic income modifier for a nation (weighted average of all owned provinces)
+function getNationEthnicMod(nid){
+  const nat = nations[nid]||mn; if(!nat) return {gold:1,mp:1,sup:1};
+  let tgold=0, tmp=0, tsup=0, tpop=0;
+  const owned = Object.entries(ownership).filter(([,n])=>n===nid).map(([pid])=>parseInt(pid));
+  if(!owned.length) return {gold:1,mp:1,sup:1};
+  owned.forEach(pid=>{
+    const pop = getProvPop(pid);
+    const total = pop.total;
+    tpop += total;
+    Object.entries(pop.groups).forEach(([eth,pct])=>{
+      const g = ETHNIC_GROUPS[eth]||{goldMod:1,mpMod:1,supMod:1};
+      tgold += (pct/100)*total*g.goldMod;
+      tmp   += (pct/100)*total*g.mpMod;
+      tsup  += (pct/100)*total*g.supMod;
+    });
+  });
+  if(tpop===0) return {gold:1,mp:1,sup:1};
+  return {gold:tgold/tpop, mp:tmp/tpop, sup:tsup/tpop};
+}
+
+// Get resource bonuses for a nation
+function getNationResourceBonus(nid){
+  const bonus={gold:0,mp:0,sup:0,resources:{}};
+  const owned = Object.entries(ownership).filter(([,n])=>n===nid).map(([pid])=>parseInt(pid));
+  owned.forEach(pid=>{
+    const res = getProvResources(pid);
+    res.forEach(key=>{
+      const r = RESOURCES[key]; if(!r) return;
+      bonus.gold += r.goldVal * 0.5;
+      bonus.mp   += r.mpVal  * 0.5;
+      bonus.sup  += r.supVal * 0.5;
+      bonus.resources[key] = (bonus.resources[key]||0)+1;
+    });
+  });
+  bonus.gold = Math.round(bonus.gold);
+  bonus.mp   = Math.round(bonus.mp);
+  bonus.sup  = Math.round(bonus.sup);
+  return bonus;
+}
+
+// Total nation pop
+function getNationPop(nid){
+  const owned = Object.entries(ownership).filter(([,n])=>n===nid).map(([pid])=>parseInt(pid));
+  return owned.reduce((sum,pid)=>sum+getProvPop(pid).total,0);
+}
+
+
 // ── STATE ───────────────────────────────────────────────────
 let cu=null,cp=null,mn=null;
 let nations={},ownership={},natColors={};
@@ -192,13 +311,22 @@ function showTip(cx,cy,mx,my){
   if(pid&&byId[pid]){
     const p=byId[pid];
     const oid=ownership[pid];
-    document.getElementById('tipN').textContent=p.name;
-    document.getElementById('tipO').textContent=oid?('Owner: '+(nations[oid]?.name||'???')):'Unclaimed';
-    document.getElementById('tipT').textContent=p.terrain[0].toUpperCase()+p.terrain.slice(1);
-    tip.style.cssText='display:block;left:'+(cx+14)+'px;top:'+(cy-38)+'px;position:fixed;background:#0d0d1a;border:1px solid rgba(0,212,255,.3);padding:5px 8px;font-size:9px;color:#c8e8ff;pointer-events:none;z-index:600;';
-    document.getElementById('tipN').style.cssText='color:#00d4ff;font-size:10px;margin-bottom:2px;';
-    document.getElementById('tipO').style.cssText='color:#40ff80;font-size:8px;';
-    document.getElementById('tipT').style.cssText='color:rgba(200,232,255,.4);font-size:8px;';
+    const popData=getProvPop(pid);
+    const resData=getProvResources(pid);
+    const ethMain=Object.entries(popData.groups).sort((a,b)=>b[1]-a[1])[0]||['?',0];
+    const ethDef=ETHNIC_GROUPS[ethMain[0]]||{color:'#888',trait:'Unknown'};
+    const resStr=resData.map(k=>RESOURCES[k]?RESOURCES[k].icon+RESOURCES[k].name:'').join(' ');
+    const ethStr=Object.entries(popData.groups).map(([e,pct])=>{
+      const g=ETHNIC_GROUPS[e]||{color:'#888'};
+      return '<span style="color:'+g.color+'">'+e+'</span> '+pct+'%';
+    }).join(', ');
+    tip.innerHTML='<div style="color:#00d4ff;font-size:10px;margin-bottom:3px">'+p.name+'</div>'
+      +'<div style="color:#40ff80;font-size:8px">'+(oid?'👑 '+(nations[oid]?.name||'???'):'Unclaimed')+'</div>'
+      +'<div style="font-size:8px;color:rgba(200,232,255,.4);margin-top:1px">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)
+        +' · 👥 '+popData.total+'k people</div>'
+      +(ethStr?'<div style="font-size:7px;margin-top:2px">'+ethStr+'</div>':'')
+      +(resStr?'<div style="font-size:8px;color:#f0c040;margin-top:2px">'+resStr+'</div>':'');
+    tip.style.cssText='display:block;left:'+(cx+14)+'px;top:'+(cy-38)+'px;position:fixed;background:#0d0d1a;border:1px solid rgba(0,212,255,.3);padding:6px 9px;font-size:9px;color:#c8e8ff;pointer-events:none;z-index:600;min-width:140px;';
   }else tip.style.display='none';
 }
 
@@ -499,6 +627,12 @@ function calcIncome(nid){
     gold*=(1+Math.max(-50,cab.gold)/100);
     mp*=(1+Math.max(-50,cab.manpower)/100);
     sup*=(1+Math.max(-50,cab.supply)/100);
+    // Ethnic group modifiers
+    const ethMod=getNationEthnicMod(nid);
+    gold*=ethMod.gold; mp*=ethMod.mp; sup*=ethMod.sup;
+    // Resource bonuses
+    const resBon=getNationResourceBonus(nid);
+    gold+=resBon.gold; mp+=resBon.mp; sup+=resBon.sup;
     // Active laws income modifiers
     const active=(nation?.active_laws||[]);
     active.forEach(key=>{
@@ -762,7 +896,30 @@ function showPanel(p){
     if(owner.stability!==undefined) nationRow+=row('STABILITY',owner.stability+'%',owner.stability>60?'gr':owner.stability>30?'':'rd');
   }
 
-  let html=[capMark,row('TERRAIN',p.terrain),row('OWNER',owner?owner.name:'Unclaimed',owner?(isOwn?'gd':'rd'):'cy'),nationRow,'<div class="rdiv"></div>','<div class="rsec">YIELD / TICK</div>',row('Gold','+'+p.gold,'gd'),row('Manpower','+'+p.manpower,''),row('Supplies','+'+p.supply,''),'<div class="rdiv"></div>','<div class="rsec">ACTIONS</div>'].join('');
+  let html=[capMark,row('TERRAIN',p.terrain),row('OWNER',owner?owner.name:'Unclaimed',owner?(isOwn?'gd':'rd'):'cy'),nationRow,
+    '<div class="rdiv"></div>',
+    '<div class="rsec">YIELD / TICK</div>',
+    row('Gold','+'+p.gold,'gd'),row('Manpower','+'+p.manpower,''),row('Supplies','+'+p.supply,''),
+  ].join('');
+
+  // Append pop + resource info
+  const popD=getProvPop(p.id);
+  const resD=getProvResources(p.id);
+  const ethMain=Object.entries(popD.groups).sort((a,b)=>b[1]-a[1])[0];
+  const ethColor=ethMain&&ETHNIC_GROUPS[ethMain[0]]?ETHNIC_GROUPS[ethMain[0]].color:'#888';
+  html+='<div class="irow"><span class="ik">POPULATION</span><span class="iv" style="color:#c8e8ff">'+popD.total+'k</span></div>';
+  if(ethMain){
+    const ethStr=Object.entries(popD.groups).slice(0,3).map(([e,pct])=>{
+      const gc=ETHNIC_GROUPS[e]?.color||'#888';
+      return '<span style="color:'+gc+'">'+e+'</span> '+pct+'%';
+    }).join(' · ');
+    html+='<div class="irow"><span class="ik">PEOPLES</span><span class="iv" style="font-size:8px">'+ethStr+'</span></div>';
+  }
+  if(resD.length>0){
+    const rStr=resD.map(k=>(RESOURCES[k]?.icon||'?')+(RESOURCES[k]?.name||k)).join(' · ');
+    html+='<div class="irow"><span class="ik">RESOURCES</span><span class="iv" style="color:#f0c040;font-size:8px">'+rStr+'</span></div>';
+  }
+  html+=['<div class="rdiv"></div>','<div class="rsec">ACTIONS</div>'].join('');
 
   let acts='';
   if(!cu){
@@ -1147,6 +1304,43 @@ const LAWS = {
   state_media:    {cat:'Culture',     name:'State Media',         buffs:{stability:10,support:6},debuffs:{gold:-2},            govs:['Autocracy','Neo-Authoritarianism','Superiority Radicalism'],      req_ideology:35, enact_weeks:1},
   cultural_rev:   {cat:'Culture',     name:'Cultural Revolution', buffs:{support:15,stability:5},debuffs:{gold:-5,manpower:-5},govs:['Paperolutionary Left','Aesthetic Democracy','Post-Modernism'],   req_ideology:50, enact_weeks:3},
   heritage_prot:  {cat:'Culture',     name:'Heritage Protection', buffs:{stability:8,support:5}, debuffs:{},                   govs:['Traditionalist Right','Institutionalism','Paperist Democracy'],  req_ideology:25, enact_weeks:2},
+  art_patronage:  {cat:'Culture',     name:'State Art Patronage', buffs:{support:10,stability:6},debuffs:{gold:-5},            govs:['Aesthetic Democracy','Post-Modernism','Paperist Democracy'],     req_ideology:30, enact_weeks:2},
+  religious_tol:  {cat:'Culture',     name:'Religious Tolerance', buffs:{stability:6,support:8}, debuffs:{},                   govs:['Paperist Democracy','Classical Liberalism','Eclecticism','Anarchism'],req_ideology:25,enact_weeks:2},
+
+  // ── TRADE & DIPLOMACY ──
+  trade_routes:   {cat:'Trade',       name:'Trade Route Network', buffs:{gold:18},               debuffs:{manpower:-3},        govs:['Classical Liberalism','Paperist Democracy','Eclecticism'],        req_ideology:30, enact_weeks:3},
+  guild_system:   {cat:'Trade',       name:'Merchant Guilds',     buffs:{gold:10,supply:6},      debuffs:{stability:-3},       govs:['Classical Liberalism','Eclecticism','Post-Modernism'],            req_ideology:25, enact_weeks:2},
+  port_law:       {cat:'Trade',       name:'Free Port Charter',   buffs:{gold:14,supply:5},      debuffs:{},                   govs:['Anarchism','Classical Liberalism','Aesthetic Democracy'],         req_ideology:35, enact_weeks:2},
+  embargo:        {cat:'Trade',       name:'Trade Embargo',       buffs:{manpower:6,stability:5},debuffs:{gold:-14},           govs:['Superiority Radicalism','Third Positionism','Autocracy'],         req_ideology:40, enact_weeks:1},
+  colonial_pact:  {cat:'Trade',       name:'Colonial Pact',       buffs:{gold:12,manpower:8},    debuffs:{stability:-5,support:-5},govs:['Neo-Authoritarianism','Institutionalism','Autocracy'],       req_ideology:40, enact_weeks:3},
+  silk_roads:     {cat:'Trade',       name:'Silk Road Access',    buffs:{gold:20,supply:8},      debuffs:{manpower:-5},        govs:['Tharune-aligned','Eclecticism','Classical Liberalism','Post-Modernism'],req_ideology:35,enact_weeks:4},
+
+  // ── SCIENCE & TECH ──
+  state_academia: {cat:'Science',     name:'State Academies',     buffs:{gold:6,stability:5,supply:4},debuffs:{manpower:-3},  govs:['Institutionalism','Paperist Democracy','Classical Liberalism'],  req_ideology:30, enact_weeks:3},
+  industrialize:  {cat:'Science',     name:'Industrialization',   buffs:{gold:14,supply:12},     debuffs:{stability:-6,manpower:-4},govs:['Classical Liberalism','Neo-Authoritarianism','Post-Modernism'],req_ideology:40,enact_weeks:5},
+  weapon_research:{cat:'Science',     name:'Weapons Research',    buffs:{manpower:14,supply:6},  debuffs:{gold:-10},          govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],req_ideology:40,enact_weeks:4},
+  agri_reform:    {cat:'Science',     name:'Agricultural Reform', buffs:{supply:16,manpower:6},  debuffs:{gold:-4},           govs:['Reformatorist Left','Institutionalism','Paperist Democracy'],     req_ideology:30, enact_weeks:3},
+  printing_press: {cat:'Science',     name:'Printing Press',      buffs:{support:12,stability:4},debuffs:{stability:-3},      govs:['Paperist Democracy','Aesthetic Democracy','Classical Liberalism'],req_ideology:25, enact_weeks:2},
+
+  // ── ETHNIC & POPULATION ──
+  assimilation:   {cat:'Population',  name:'Assimilation Policy', buffs:{stability:8,support:6}, debuffs:{manpower:-4},       govs:['Autocracy','Neo-Authoritarianism','Institutionalism','Third Positionism'],req_ideology:35,enact_weeks:3},
+  multiculturalism:{cat:'Population', name:'Multiculturalism',    buffs:{gold:6,manpower:8,supply:5},debuffs:{stability:-4},  govs:['Paperist Democracy','Anarchism','Aesthetic Democracy','Post-Modernism'],req_ideology:30,enact_weeks:2},
+  population_boom:{cat:'Population',  name:'Population Incentive',buffs:{manpower:16,supply:8},  debuffs:{gold:-8},           govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],   req_ideology:35, enact_weeks:3},
+  ethnic_cleanse: {cat:'Population',  name:'Ethnic Purge',        buffs:{stability:12,manpower:8},debuffs:{support:-20,gold:-8},govs:['Superiority Radicalism','Third Positionism'],                  req_ideology:65, enact_weeks:1},
+  migration_wave: {cat:'Population',  name:'Open Migration',      buffs:{manpower:12,gold:5},    debuffs:{stability:-6},      govs:['Anarchism','Post-Modernism','Aesthetic Democracy'],               req_ideology:25, enact_weeks:2},
+
+  // ── JUSTICE & ORDER ──
+  rule_of_law:    {cat:'Justice',     name:'Rule of Law',         buffs:{stability:10,gold:4},   debuffs:{},                  govs:['Paperist Democracy','Classical Liberalism','Institutionalism'],  req_ideology:25, enact_weeks:2},
+  martial_law:    {cat:'Justice',     name:'Martial Law',         buffs:{stability:15,manpower:8},debuffs:{support:-12,gold:-5},govs:['Autocracy','Neo-Authoritarianism','Third Positionism'],       req_ideology:45, enact_weeks:1},
+  prison_reform:  {cat:'Justice',     name:'Prison Reform',       buffs:{stability:5,support:8}, debuffs:{gold:-3},           govs:['Reformatorist Left','Paperist Democracy','Aesthetic Democracy'],  req_ideology:25, enact_weeks:2},
+  secret_police:  {cat:'Justice',     name:'Secret Police',       buffs:{stability:12},          debuffs:{support:-10,gold:-3},govs:['Autocracy','Neo-Authoritarianism','Superiority Radicalism'],   req_ideology:45, enact_weeks:1},
+  civilian_arms:  {cat:'Justice',     name:'Right to Bear Arms',  buffs:{manpower:10,support:8}, debuffs:{stability:-8},      govs:['Anarchism','Classical Liberalism'],                              req_ideology:40, enact_weeks:2},
+
+  // ── ENVIRONMENT & LAND ──
+  deforest:       {cat:'Environment', name:'Mass Deforestation',  buffs:{supply:14,gold:6},      debuffs:{stability:-4,manpower:-3},govs:['Third Positionism','Autocracy','Neo-Authoritarianism'],  req_ideology:30, enact_weeks:2},
+  conservation:   {cat:'Environment', name:'Conservation Edict',  buffs:{supply:8,stability:6},  debuffs:{gold:-5},           govs:['Aesthetic Democracy','Anarchism','Post-Modernism'],              req_ideology:25, enact_weeks:2},
+  irrigation:     {cat:'Environment', name:'Irrigation Projects', buffs:{supply:14,manpower:5},  debuffs:{gold:-6},           govs:['Institutionalism','Reformatorist Left','Paperist Democracy'],    req_ideology:30, enact_weeks:4},
+  mining_rights:  {cat:'Environment', name:'State Mining Rights', buffs:{gold:12,supply:6},      debuffs:{stability:-3},      govs:['Autocracy','Neo-Authoritarianism','Institutionalism'],           req_ideology:30, enact_weeks:2},
 };
 
 // Pseudo-random number generator (deterministic from seed)
@@ -1313,11 +1507,11 @@ function renderLaws(){
     if(!cats[law.cat])cats[law.cat]=[];
     cats[law.cat].push({key,...law});
   });
-  const catOrder=['Government','Public Health','Freedom','Taxation','Economy','Military','Culture'];
+  const catOrder=['Government','Public Health','Freedom','Taxation','Economy','Military','Culture','Trade','Science','Population','Justice','Environment'];
   let html='<div style="font-size:8px;color:rgba(200,232,255,.3);margin-bottom:8px">Active: <span style="color:#f0c040">'+active.length+'/4</span> · Enacting: <span style="color:#00d4ff">'+Object.keys(pending).length+'</span></div>';
   catOrder.forEach(cat=>{
     if(!cats[cat])return;
-    const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff'}[cat]||'#aaa';
+    const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff',Trade:'#ffd700',Science:'#00d4ff',Population:'#e87a7a',Justice:'#c8a0ff',Environment:'#60d464'}[cat]||'#aaa';
     html+='<div style="font-size:8px;color:'+catColor+';letter-spacing:.14em;padding:5px 0 4px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:6px">◈ '+cat.toUpperCase()+'</div>';
     cats[cat].forEach(({key,name,buffs,debuffs,govs,req_ideology,enact_weeks})=>{
       const isActive=active.includes(key);
@@ -1408,9 +1602,128 @@ window.polTab=function(t){
 function renderPolTab(){
   const el=document.getElementById('polBody');
   if(!el)return;
-  if(polTabActive==='politicians') el.innerHTML=renderPoliticians();
-  else if(polTabActive==='laws')   el.innerHTML=renderLaws();
-  else                             el.innerHTML=renderSupport();
+  if(polTabActive==='politicians')  el.innerHTML=renderPoliticians();
+  else if(polTabActive==='laws')    el.innerHTML=renderLaws();
+  else if(polTabActive==='population') el.innerHTML=renderPopulation();
+  else                              el.innerHTML=renderSupport();
+}
+
+function renderPopulation(){
+  if(!mn)return'<div style="color:rgba(200,232,255,.3);font-size:9px">No nation selected.</div>';
+  const owned=Object.entries(ownership).filter(([,n])=>n===mn.id).map(([pid])=>parseInt(pid));
+  const totalPop=owned.reduce((s,pid)=>s+getProvPop(pid).total,0);
+  const ethMod=getNationEthnicMod(mn.id);
+  const resBon=getNationResourceBonus(mn.id);
+
+  // Aggregate ethnic distribution across nation
+  const ethAgg={};
+  let popSum=0;
+  owned.forEach(pid=>{
+    const pop=getProvPop(pid);
+    popSum+=pop.total;
+    Object.entries(pop.groups).forEach(([eth,pct])=>{
+      ethAgg[eth]=(ethAgg[eth]||0)+(pct/100)*pop.total;
+    });
+  });
+
+  // Aggregate resources
+  const resAgg={};
+  owned.forEach(pid=>{
+    getProvResources(pid).forEach(r=>{resAgg[r]=(resAgg[r]||0)+1;});
+  });
+
+  let html='';
+
+  // ── POPULATION OVERVIEW ───
+  html+='<div style="border:1px solid rgba(0,212,255,.15);padding:10px;margin-bottom:10px;background:rgba(0,212,255,.02)">';
+  html+='<div style="font-size:9px;color:rgba(200,232,255,.4);letter-spacing:.12em;margin-bottom:8px">◈ POPULATION</div>';
+  html+='<div style="font-size:18px;color:#c8e8ff;margin-bottom:2px">'+totalPop.toLocaleString()+'<span style="font-size:10px;color:rgba(200,232,255,.3)"> thousand</span></div>';
+  html+='<div style="font-size:8px;color:rgba(200,232,255,.35)">Across '+owned.length+' provinces</div>';
+  // Pop bar — ethnic breakdown
+  if(popSum>0){
+    html+='<div style="margin-top:8px;margin-bottom:4px;font-size:8px;color:rgba(200,232,255,.3);letter-spacing:.1em">ETHNIC COMPOSITION</div>';
+    html+='<div style="display:flex;height:8px;border-radius:2px;overflow:hidden;margin-bottom:6px">';
+    Object.entries(ethAgg).sort((a,b)=>b[1]-a[1]).forEach(([eth,pop])=>{
+      const g=ETHNIC_GROUPS[eth]||{color:'#888'};
+      const pct=Math.round(pop/popSum*100);
+      html+='<div style="width:'+pct+'%;background:'+g.color+';opacity:.8" title="'+eth+' '+pct+'%"></div>';
+    });
+    html+='</div>';
+    html+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+    Object.entries(ethAgg).sort((a,b)=>b[1]-a[1]).forEach(([eth,pop])=>{
+      const g=ETHNIC_GROUPS[eth]||{color:'#888',trait:'?'};
+      const pct=Math.round(pop/popSum*100);
+      html+='<div style="font-size:8px;padding:2px 6px;border:1px solid '+g.color+'40;color:'+g.color+'">'+eth
+        +' <span style="opacity:.6">'+pct+'%</span></div>';
+    });
+    html+='</div>';
+  }
+  // Ethnic modifiers
+  html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,212,255,.1);font-size:8px;color:rgba(200,232,255,.4)">Ethnic income modifiers: '
+    +'Gold ×<span style="color:'+(ethMod.gold>=1?'#40ff80':'#ff6b6b')+'">'+ethMod.gold.toFixed(2)+'</span> · '
+    +'Manpower ×<span style="color:'+(ethMod.mp>=1?'#40ff80':'#ff6b6b')+'">'+ethMod.mp.toFixed(2)+'</span> · '
+    +'Supply ×<span style="color:'+(ethMod.sup>=1?'#40ff80':'#ff6b6b')+'">'+ethMod.sup.toFixed(2)+'</span>'
+    +'</div>';
+  html+='</div>';
+
+  // ── RESOURCES ─────────────────
+  html+='<div style="border:1px solid rgba(0,212,255,.15);padding:10px;margin-bottom:10px;background:rgba(0,212,255,.02)">';
+  html+='<div style="font-size:9px;color:rgba(200,232,255,.4);letter-spacing:.12em;margin-bottom:8px">◈ RESOURCES</div>';
+  if(Object.keys(resAgg).length===0){
+    html+='<div style="font-size:8px;color:rgba(200,232,255,.25)">No resources discovered yet.</div>';
+  } else {
+    // Group by category
+    const catRes={};
+    Object.entries(resAgg).forEach(([k,cnt])=>{
+      const r=RESOURCES[k]; if(!r) return;
+      if(!catRes[r.cat]) catRes[r.cat]=[];
+      catRes[r.cat].push({key:k,cnt,r});
+    });
+    Object.entries(catRes).forEach(([cat,items])=>{
+      html+='<div style="font-size:8px;color:rgba(200,232,255,.3);margin-bottom:4px;margin-top:6px">'+cat+'</div>';
+      html+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+      items.forEach(({key,cnt,r})=>{
+        const incStr=(r.goldVal?'+'+r.goldVal+'g ':'')+( r.mpVal?'+'+r.mpVal+'mp ':'')+( r.supVal?'+'+r.supVal+'s':'');
+        html+='<div style="border:1px solid rgba(240,192,64,.2);padding:3px 7px;font-size:8px">'
+          +r.icon+' '+r.name+' ×'+cnt
+          +'<div style="font-size:7px;color:rgba(200,232,255,.35)">'+incStr+' per province</div>'
+          +'</div>';
+      });
+      html+='</div>';
+    });
+    html+='<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,212,255,.08);font-size:8px;color:rgba(200,232,255,.4)">Total resource bonus: '
+      +'<span style="color:#40ff80">+'+resBon.gold+'</span> Gold · '
+      +'<span style="color:#40ff80">+'+resBon.mp+'</span> Manpower · '
+      +'<span style="color:#40ff80">+'+resBon.sup+'</span> Supply per tick</div>';
+  }
+  html+='</div>';
+
+  // ── ETHNIC DETAILS ────────────
+  html+='<div style="border:1px solid rgba(0,212,255,.15);padding:10px;background:rgba(0,212,255,.02)">';
+  html+='<div style="font-size:9px;color:rgba(200,232,255,.4);letter-spacing:.12em;margin-bottom:8px">◈ ETHNIC GROUPS</div>';
+  const allEth=Object.keys(ETHNIC_GROUPS);
+  allEth.forEach(eth=>{
+    const g=ETHNIC_GROUPS[eth];
+    const pop=ethAgg[eth]||0;
+    const pct=popSum>0?Math.round(pop/popSum*100):0;
+    if(pct===0)return;
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:5px 7px;border-left:2px solid '+g.color+'">'
+      +'<div style="flex:1">'
+      +'<div style="font-size:10px;color:'+g.color+'">'+eth+'<span style="font-size:8px;color:rgba(200,232,255,.4);margin-left:4px">['+g.trait+']</span></div>'
+      +'<div style="font-size:8px;color:rgba(200,232,255,.35);margin-top:1px">'+g.desc+'</div>'
+      +'<div style="font-size:7px;margin-top:2px;color:rgba(200,232,255,.3)">'
+        +'Gold ×'+g.goldMod.toFixed(2)+' · MP ×'+g.mpMod.toFixed(2)+' · Supply ×'+g.supMod.toFixed(2)
+      +'</div>'
+      +'</div>'
+      +'<div style="text-align:right;min-width:40px">'
+      +'<div style="font-size:12px;color:#c8e8ff">'+pct+'%</div>'
+      +'<div style="font-size:7px;color:rgba(200,232,255,.3)">'+Math.round(pop)+'k</div>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  return html;
 }
 
 function renderSupport(){
