@@ -787,24 +787,40 @@ function updateFlagLeader(){
   if(!mn)return;
 
   // ── Flag banner ──────────────────────────────────────────
-  const fw=document.getElementById('sbFlagWrap'),fi=document.getElementById('sbFlagImg');
-  if(mn.flag_url){fi.src=mn.flag_url;fw.style.display='block';}else{fw.style.display='none';}
+  const fb=document.getElementById('sbFlagBanner'),fi=document.getElementById('sbFlagImg');
+  if(mn.flag_url){fi.src=mn.flag_url;fb.style.display='block';}else{fb.style.display='none';}
 
-  // ── HoI4-style leader card ───────────────────────────────
-  const lc=document.getElementById('leaderCard');
-  if(lc){lc.classList.add('show');}
-  const lcPort=document.getElementById('lcPortrait');
-  if(lcPort){
-    if(mn.leader_url){
-      lcPort.innerHTML='<img src="'+mn.leader_url+'" alt="leader">';
-    } else {
-      lcPort.textContent='👤';
-    }
+  // ── Nation header: leader + name ─────────────────────────
+  const hdr=document.getElementById('sbNationHeader');
+  const noHdr=document.getElementById('sbNoNatHeader');
+  if(hdr){hdr.style.display='flex';} if(noHdr){noHdr.style.display='none';}
+
+  const lf=document.getElementById('sbLeaderFrame');
+  if(lf){
+    if(mn.leader_url) lf.innerHTML='<img src="'+mn.leader_url+'" alt="leader" style="width:100%;height:100%;object-fit:cover;object-position:top;display:block;">';
+    else lf.textContent='👤';
   }
-  const lcName=document.getElementById('lcName');
-  if(lcName) lcName.textContent=mn.ruler||mn.name;
-  const lcGov=document.getElementById('lcGov');
-  if(lcGov) lcGov.textContent=(mn.gov||'').toUpperCase();
+  const rulerEl=document.getElementById('sbRulerName');
+  if(rulerEl) rulerEl.textContent=mn.ruler||'';
+
+  // Show resource block & edit row
+  const rb=document.getElementById('sbResBlock'),er=document.getElementById('sbEditRow');
+  if(rb)rb.style.display='block'; if(er)er.style.display='block';
+
+  // ── Resource bars (fill width proportional, cap at 9999) ─
+  const capG=9999,capM=9999,capS=9999;
+  const fg=document.getElementById('rGBar'),fm=document.getElementById('rMBar'),fs=document.getElementById('rSBar');
+  if(fg)fg.style.width=Math.min(100,(mn.gold/capG)*100)+'%';
+  if(fm)fm.style.width=Math.min(100,(mn.manpower/capM)*100)+'%';
+  if(fs)fs.style.width=Math.min(100,(mn.supply/capS)*100)+'%';
+
+  // ── Stability bar ────────────────────────────────────────
+  const stBar=document.getElementById('rStBar');
+  if(stBar){
+    const sv=mn.stability||0;
+    const sc=sv>60?'#40ff80':sv>30?'#f0c040':'#ff6b6b';
+    stBar.style.width=sv+'%';stBar.style.background=sc;
+  }
 
   // ── Party support bars ───────────────────────────────────
   const ps=mn.party_support||{};
@@ -812,12 +828,9 @@ function updateFlagLeader(){
   const pbars=document.getElementById('partyBars');
   if(psec&&pbars&&Object.keys(ps).length){
     psec.style.display='block';
-    // Sort by support desc, show top 5
     const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,5);
     pbars.innerHTML=sorted.map(([name,pct])=>{
-      const g=GOVS[name];
-      const col=g?g.color:'#888';
-      const isCur=name===mn.gov;
+      const g=GOVS[name];const col=g?g.color:'#888';const isCur=name===mn.gov;
       return '<div class="party-row">'
         +'<div class="party-name"><span'+(isCur?' style="color:'+col+'"':'')+'>'+name+(isCur?' ★':'')+'</span>'
         +'<span class="party-pct">'+pct+'%</span></div>'
@@ -826,9 +839,9 @@ function updateFlagLeader(){
     }).join('');
   }
 
-  // ── Desktop sidebar toggle button visibility ─────────────
+  // ── Desktop sidebar toggle ───────────────────────────────
   const stb=document.getElementById('sbTogBtn');
-  if(stb&&window.innerWidth>768) stb.style.display='block';
+  if(stb){stb.style.display=document.getElementById('sb').classList.contains('collapsed')?'block':'none';}
 }
 
 window.onGC=function(){const g=document.getElementById('sG').value;document.getElementById('gB').textContent=(GOVS[g]?.bonus)||'';document.getElementById('gB').style.borderColor='rgba('+(hexRgb(GOVS[g]?.color||'#888').join(','))+', .3)';document.getElementById('gB').style.color=GOVS[g]?.color||'#f0c040';};
@@ -881,6 +894,7 @@ function updateNatUI(){
   document.getElementById('sbN').textContent=mn.name;
   document.getElementById('sbG').textContent=(mn.gov||'').toUpperCase();
   document.getElementById('sbGBtn').style.display='block';
+  const noHdr=document.getElementById('sbNoNatHeader');if(noHdr)noHdr.style.display='none';
   const inc=calcIncome(mn.id);
   document.getElementById('rG').textContent=Math.round(mn.gold);
   document.getElementById('rM').textContent=Math.round(mn.manpower);
@@ -917,133 +931,116 @@ function isAdj(pid){
 }
 
 function showPanel(p){
-  const oid=ownership[p.id],owner=oid?nations[oid]:null;
-  const isOwn=mn&&oid===mn.id,isCap=mn&&mn.capital_id===p.id;
-  const capMark=isCap?'<span class="cap-star">★ CAPITAL</span><br>':'';
+  const oid=ownership[p.id], owner=oid?nations[oid]:null;
+  const isOwn=mn&&oid===mn.id, isCap=mn&&mn.capital_id===p.id;
 
-  document.getElementById('rpH').textContent=(isCap?'★ ':'')+p.name.toUpperCase();
+  // ── Header ──────────────────────────────────────────────
+  const capEl=document.getElementById('rpH');
+  capEl.innerHTML=(isCap?'<span class="rph-cap">★</span> ':'')+p.name.toUpperCase();
 
-  // Nation flag/portrait row in right panel
-  let nationRow='';
-  if(owner){
-    const govColor=(GOVS[owner.gov]?.color)||'#aaa';
-    if(owner.flag_url) nationRow+=`<div class="irow"><img src="${owner.flag_url}" style="height:18px;border:1px solid rgba(255,255,255,.15);margin-right:4px;vertical-align:middle"><span class="ik">NATION</span><span class="iv" style="color:#c8e8ff">${owner.name}</span></div>`;
-    nationRow+=`<div class="irow"><span class="ik">GOV</span><span class="iv" style="color:${govColor}">${owner.gov||'—'}</span></div>`;
-    if(owner.ruler){
-      const portHtml=owner.leader_url?`<img src="${owner.leader_url}" style="width:20px;height:26px;object-fit:cover;object-position:top;border:1px solid rgba(240,192,64,.3);margin-right:5px;vertical-align:middle">`:''
-      nationRow+=`<div class="irow" style="align-items:center">${portHtml}<span class="ik">RULER</span><span class="iv cy">${owner.ruler}</span></div>`;
-    }
-    if(owner.stability!==undefined) nationRow+=row('STABILITY',owner.stability+'%',owner.stability>60?'gr':owner.stability>30?'':'rd');
-  }
-
+  // ── Helpers ──────────────────────────────────────────────
   const _pp=getProvPeople(p.id);
   const _ppop=getProvPopEst(p.id);
   const _pres=getProvResources(p.id);
-  const _resH=_pres.map(r=>'<span style="margin-right:5px">'+r[0]+' '+r[1]+'</span>').join('');
-  const _ethGroups=owner?(owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[])):[];
-  const _ethStr=_ethGroups.length?'<div class="irow"><span class="ik">PEOPLE</span><span class="iv" style="color:#9b6dff">'+_ethGroups.join(', ')+'</span></div>':'';
-  let html=[capMark,
-    row('TERRAIN',p.terrain[0].toUpperCase()+p.terrain.slice(1)),
-    row('OWNER',owner?owner.name:'Unclaimed',owner?(isOwn?'gd':'rd'):'cy'),
-    nationRow,
-    '<div class="rdiv"></div>',
-    '<div class="rsec">PROVINCE INFO</div>',
-    '<div class="irow"><span class="ik">NATIVES</span><span class="iv" style="color:'+_pp.color+'">'+_pp.name+'</span></div>',
-    '<div class="irow"><span class="ik">POP</span><span class="iv">~'+_ppop+'k</span></div>',
-    _ethStr,
-    _resH?'<div class="irow"><span class="ik">RESOURCES</span><span class="iv" style="color:#f0c040;font-size:8px">'+_resH+'</span></div>':'',
-    '<div class="rdiv"></div>',
-    '<div class="rsec">YIELD / TICK</div>',
-    row('Gold','+'+p.gold,'gd'),row('Manpower','+'+p.manpower,''),row('Supplies','+'+p.supply,''),
-    '<div class="rdiv"></div>','<div class="rsec">ACTIONS</div>',
-  ].join('');
+  const _ownGroups=owner?(owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[])):[];
 
-  let acts='';
+  // Assimilation: what % of province pop is owner's ethnicity vs native
+  // Simulated: each owned province slowly assimilates (based on province id + owner id as seed)
+  let assiPct=0;
+  if(owner&&_ownGroups.length){
+    const seed=(p.id*17+oid*31)%100;
+    assiPct=Math.min(85,Math.max(5,seed));
+  }
+  const nativePct=100-assiPct;
+
+  // ── SECTION: Nation info (if owned) ──────────────────────
+  let nationSec='';
+  if(owner){
+    const govColor=(GOVS[owner.gov]?.color)||'#aaa';
+    const flagHtml=owner.flag_url?'<img class="rp-flag" src="'+owner.flag_url+'" alt="">':'';
+    const portHtml=owner.leader_url?'<img class="rp-portrait" src="'+owner.leader_url+'" alt="">':'';
+    nationSec='<div class="rp-section">'
+      +'<div class="rp-section-title">NATION</div>'
+      +'<div class="rp-nation-banner">'+flagHtml+'<span class="rp-nation-name">'+owner.name+'</span>'+portHtml+'</div>'
+      +'<div class="irow"><span class="ik">GOVERNMENT</span><span class="iv" style="color:'+govColor+'">'+owner.gov+'</span></div>'
+      +(owner.ruler?'<div class="irow"><span class="ik">RULER</span><span class="iv cy">'+owner.ruler+'</span></div>':'')
+      +'<div class="irow"><span class="ik">STABILITY</span><span class="iv '+(owner.stability>60?'gr':owner.stability>30?'':'rd')+'">'+owner.stability+'%</span></div>'
+      +'</div>';
+  }
+
+  // ── SECTION: Province info ────────────────────────────────
+  const resChips=_pres.map(r=>'<span class="res-chip">'+r[0]+' '+r[1]+'</span>').join('');
+  // Population bar: native (cosmetic) vs assimilated (owner ethnicity)
+  let popBarHtml='';
+  if(owner&&_ownGroups.length){
+    popBarHtml='<div class="pop-bar-wrap">'
+      +'<div class="pop-bar-label"><span style="color:'+_pp.color+'">'+_pp.name+' '+nativePct+'%</span><span style="color:#9b6dff">'+_ownGroups[0]+' '+assiPct+'%</span></div>'
+      +'<div class="pop-bar-track">'
+      +'<div class="pop-seg" style="width:'+nativePct+'%;background:'+_pp.color+'40;border-right:1px solid '+_pp.color+'60"></div>'
+      +'<div class="pop-seg" style="width:'+assiPct+'%;background:rgba(155,109,255,.35);border-left:1px solid rgba(155,109,255,.5)"></div>'
+      +'</div></div>';
+  } else {
+    popBarHtml='<div class="pop-bar-wrap">'
+      +'<div class="pop-bar-label"><span style="color:'+_pp.color+'">'+_pp.name+'</span><span>Unclaimed</span></div>'
+      +'<div class="pop-bar-track"><div class="pop-seg" style="width:100%;background:'+_pp.color+'30"></div></div>'
+      +'</div>';
+  }
+
+  const provSec='<div class="rp-section">'
+    +'<div class="rp-section-title">PROVINCE INFO</div>'
+    +'<div class="irow"><span class="ik">TERRAIN</span><span class="iv">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)+'</span></div>'
+    +'<div class="irow"><span class="ik">POPULATION</span><span class="iv">~'+_ppop+'k</span></div>'
+    +popBarHtml
+    +(resChips?'<div class="res-chips">'+resChips+'</div>':'')
+    +'</div>';
+
+  // ── SECTION: Yield ────────────────────────────────────────
+  const yieldSec='<div class="rp-section">'
+    +'<div class="rp-section-title">YIELD / TICK</div>'
+    +'<div class="yield-grid">'
+    +'<div class="yield-cell"><div class="yield-icon">💰</div><div class="yield-val">+'+p.gold+'</div><div class="yield-lbl">GOLD</div></div>'
+    +'<div class="yield-cell"><div class="yield-icon">⚔</div><div class="yield-val">+'+p.manpower+'</div><div class="yield-lbl">MANPOWER</div></div>'
+    +'<div class="yield-cell"><div class="yield-icon">⚙</div><div class="yield-val">+'+p.supply+'</div><div class="yield-lbl">SUPPLIES</div></div>'
+    +'</div></div>';
+
+  // ── SECTION: Actions ─────────────────────────────────────
+  let actContent='';
   if(!cu){
-  acts = btn(
-    'Login to interact',
-    'prim',
-    `document.getElementById('auth').style.display='flex'`
-  );
-}
-else if(isOwn){
-  acts += btn(
-    '⚒ Build (Phase 3)',
-    'prim',
-    `toast('Building system coming in Phase 3')`
-  );
+    actContent=btn('Login to interact','prim','document.getElementById(\'auth\').style.display=\'flex\'');
+  } else if(isOwn){
+    actContent=btn('⚒ Build (Phase 3)','prim','toast(\'Building system coming in Phase 3\')');
+    actContent+=btn('⚔ Recruit (Phase 4)','prim','toast(\'Military system coming in Phase 4\')');
+    actContent+=btn('📜 Open Politics','warn','openPolModal()');
+  } else if(!oid&&mn){
+    const adj=isAdj(p.id);
+    actContent=btn('▶ Claim Province (30 Gold)','prim','claimP('+p.id+')',!adj,adj?'':'Not adjacent to your territory');
+  } else if(oid&&!isOwn&&mn){
+    // ── DIPLOMACY PANEL ──
+    const diplo=nations[oid];
+    const dGovColor=(GOVS[diplo?.gov]?.color)||'#aaa';
+    actContent='<div class="diplo-section">'
+      +'<div class="diplo-nation-card">'
+      +(diplo?.flag_url?'<img style="height:22px;border:1px solid rgba(255,255,255,.15);margin-bottom:6px" src="'+diplo.flag_url+'" alt="">':'')
+      +'<div class="diplo-name">'+diplo.name+'</div>'
+      +'<div class="diplo-gov" style="color:'+dGovColor+'">'+diplo.gov+'</div>'
+      +'<div class="diplo-stat-row"><span class="diplo-stat-label">RULER</span><span class="diplo-stat-val">'+(diplo.ruler||'Unknown')+'</span></div>'
+      +'<div class="diplo-stat-row"><span class="diplo-stat-label">STABILITY</span><span class="diplo-stat-val">'+(diplo.stability||'?')+'%</span></div>'
+      +'<div class="diplo-stat-row"><span class="diplo-stat-label">TERRITORIES</span><span class="diplo-stat-val">'+Object.values(ownership).filter(v=>v===oid).length+'</span></div>'
+      +'</div>'
+      +'<div class="diplo-actions">'
+      +btn('✉ Send Envoy (Phase 3)','prim','toast(\'Diplomacy coming in Phase 3\')')
+      +btn('⚔ Declare War (Phase 4)','dng','toast(\'War system coming in Phase 4\')')
+      +'</div></div>';
+  } else if(!mn&&cu){
+    actContent=btn('⚑ Found Nation Here','prim','openSetup()');
+  }
 
-  acts += btn(
-    '⚔ Recruit (Phase 4)',
-    'prim',
-    `toast('Military system coming in Phase 4')`
-  );
+  const actSec='<div class="rp-section"><div class="rp-section-title">ACTIONS</div><div class="act-section">'+actContent+'</div></div>';
 
-  acts += btn(
-    '📜 Open Politics',
-    'warn',
-    `openPolModal()`
-  );
-}
-else if(!oid && mn){
-  const adj = isAdj(p.id);
-
-  acts += btn(
-    '▶ Claim (30 Gold)',
-    'prim',
-    `claimP(${p.id})`,
-    !adj,
-    adj ? '' : 'Not adjacent to your territory'
-  );
-}
-else if(oid && !isOwn && mn){
-  acts += btn(
-    '⚔ Declare War (Phase 4)',
-    'dng',
-    `toast('War system coming in Phase 4')`
-  );
-
-  acts += btn(
-    '✉ Send Envoy (Phase 3)',
-    'prim',
-    `toast('Diplomacy coming in Phase 3')`
-  );
-}
-  else if(!mn&&cu){acts+=btn('⚑ Found Nation Here','prim','openSetup()');}
-  document.getElementById('rpB').innerHTML=html+acts;
-
+  document.getElementById('rpB').innerHTML=nationSec+provSec+yieldSec+actSec;
   if(window.innerWidth<=768){document.getElementById('rp').classList.add('open');}
-  if(window.innerWidth>768){
-    const sbEl=document.getElementById('sb');
-    sbEl.classList.remove('collapsed');
-    const stb=document.getElementById('sbTogBtn');
-    if(stb)stb.textContent='◀';
-  }
 }
 
-function row(k,v,c){return '<div class="irow"><span class="ik">'+k+'</span><span class="iv'+(c?' '+c:'')+'">'+v+'</span></div>';}
-function btn(l,c,oc,dis,ti){return '<button class="abtn '+c+'" onclick="'+oc+'"'+(dis?' disabled':'')+(ti?' title="'+ti+'"':'')+'>'+l+'</button>';}
-
-window.claimP=async function(pid){
-  if(!mn||!cu)return;
-  if(ownership[pid]){toast('Already claimed!');return;}
-  if(!isAdj(pid)){toast('Not adjacent to your territory!');return;}
-  if(mn.gold<30){toast('Need 30 Gold!');return;}
-  const{error}=await sb.from('wc_ownership').insert({province_id:pid,nation_id:mn.id});
-  if(error){toast('Error: '+error.message);return;}
-  await sb.from('wc_nations').update({gold:mn.gold-30}).eq('id',mn.id);
-  ownership[pid]=mn.id;mn.gold-=30;
-  // Refresh nation from DB to keep resources accurate
-  const{data:fresh}=await sb.from('wc_nations').select('*').eq('id',mn.id).single();
-  if(fresh){mn={...mn,...fresh};nations[mn.id]=mn;}
-  updateNatUI();draw();showPanel(byId[pid]);
-  if(window.innerWidth<=768){
-    // On mobile, close sidebar after claim
-    document.getElementById('sb').classList.remove('open');
-    document.getElementById('sbOverlay').style.display='none';
-  }
-  toast('✓ '+byId[pid].name+' claimed!');
-};
 
 // ── GOV MODAL ──────────────────────────────────────────────
 window.openGovModal=function(){

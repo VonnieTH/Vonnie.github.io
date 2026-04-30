@@ -101,48 +101,61 @@
 <div id="g">
   <div id="sbOverlay" onclick="closePanels()" style="display:none;position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.55);"></div>
   <div id="sb">
+    <!-- HoI4-style flag banner -->
+    <div id="sbFlagBanner"><img id="sbFlagImg" src="" alt=""></div>
+
+    <!-- Nation header: leader portrait + name/gov -->
     <div id="sbt">
-      <!-- Nation flag banner (HoI4 style) -->
-      <div id="sbFlagWrap" style="display:none;width:100%;height:48px;overflow:hidden;margin-bottom:0;position:relative;">
-        <img id="sbFlagImg" src="" alt="flag" style="width:100%;height:100%;object-fit:cover;display:block;">
+      <div class="sb-nation-header" id="sbNationHeader" style="display:none">
+        <div class="sb-leader-frame" id="sbLeaderFrame">👤</div>
+        <div class="sb-nation-info">
+          <div class="nname" id="sbN">—</div>
+          <div class="ngov" id="sbG"></div>
+          <div class="sb-ruler-name" id="sbRulerName"></div>
+          <button id="sbGBtn" onclick="openGovModal()" style="display:none;font-family:inherit;font-size:7px;letter-spacing:.08em;padding:2px 5px;border:1px solid rgba(240,192,64,.2);background:transparent;color:rgba(240,192,64,.4);cursor:pointer;margin-top:4px">⚖ REFORM</button>
+        </div>
       </div>
-      <!-- Leader portrait row -->
-      <div id="sbLeaderRow" style="display:none;align-items:center;gap:7px;padding:5px 8px 0;">
-        <div id="sbLeaderAvatar" style="width:34px;height:34px;border-radius:50%;border:1px solid rgba(240,192,64,.5);flex-shrink:0;background:rgba(240,192,64,.08);display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;">👤</div>
-        <div><div id="sbLeaderName" style="font-size:10px;color:#f0c040;letter-spacing:.04em;">—</div><div style="font-size:8px;color:rgba(200,232,255,.3);letter-spacing:.08em;">RULER</div></div>
+      <div id="sbNoNatHeader" style="padding:8px 10px;text-align:center">
+        <div style="font-size:8px;color:rgba(0,212,255,.4);letter-spacing:.16em;margin-bottom:2px">WORLD CONQUEST</div>
+        <div style="font-size:10px;color:rgba(200,232,255,.3)">No Nation</div>
       </div>
-      <div class="gtitle">WORLD CONQUEST</div>
-      <div class="nname" id="sbN">No Nation</div>
-      <div class="ngov" id="sbG"></div>
-      <button id="sbGBtn" onclick="openGovModal()" style="display:none;width:100%;font-family:inherit;font-size:7px;letter-spacing:.1em;padding:3px;border:1px solid rgba(240,192,64,.2);background:transparent;color:rgba(240,192,64,.5);cursor:pointer;margin-top:5px">⚖ REFORM GOVERNMENT</button>
     </div>
-    <div class="resblock">
-      <div class="rrow"><span class="rlbl">GOLD</span><span><span class="rval" id="rG">—</span><span class="rinc" id="iG"></span></span></div>
-      <div class="rrow"><span class="rlbl">MANPOWER</span><span><span class="rval" id="rM">—</span><span class="rinc" id="iM"></span></span></div>
-      <div class="rrow"><span class="rlbl">SUPPLIES</span><span><span class="rval" id="rS">—</span><span class="rinc" id="iSup"></span></span></div>
-      <div class="rrow"><span class="rlbl">STABILITY</span><span class="rval" id="rSt">—</span></div>
-      <div class="rrow"><span class="rlbl">NEXT TICK</span><span class="rval" id="rTick" style="font-size:9px">—</span></div>
+
+    <!-- Resource block -->
+    <div class="resblock" id="sbResBlock" style="display:none">
+      <div class="res-header">NATIONAL RESOURCES</div>
+      <div class="rrow"><span class="r-icon">💰</span><span class="rlbl">Gold</span><span><span class="rval" id="rG">—</span><span class="rinc" id="iG"></span></span></div>
+      <div class="r-bar"><div class="r-bar-fill" id="rGBar" style="background:#f0c040"></div></div>
+      <div class="rrow"><span class="r-icon">⚔</span><span class="rlbl">Manpower</span><span><span class="rval" id="rM">—</span><span class="rinc" id="iM"></span></span></div>
+      <div class="r-bar"><div class="r-bar-fill" id="rMBar" style="background:#5b8cff"></div></div>
+      <div class="rrow"><span class="r-icon">⚙</span><span class="rlbl">Supplies</span><span><span class="rval" id="rS">—</span><span class="rinc" id="iSup"></span></span></div>
+      <div class="r-bar"><div class="r-bar-fill" id="rSBar" style="background:#40ff80"></div></div>
+      <div class="stab-row">
+        <span class="stab-label">STABILITY</span>
+        <div class="stab-track"><div class="stab-fill" id="rStBar"></div></div>
+        <span class="stab-val" id="rSt">—</span>
+      </div>
+      <div class="rrow" style="padding-bottom:5px"><span class="r-icon">⏱</span><span class="rlbl">Next Tick</span><span class="rval" id="rTick" style="font-size:9px">—</span></div>
     </div>
-    <div id="noNat" style="padding:10px;font-size:9px;color:rgba(200,232,255,.3);line-height:1.6">
+
+    <!-- No nation state -->
+    <div id="noNat" style="padding:12px 10px;font-size:9px;color:rgba(200,232,255,.3);line-height:1.6">
       You have not founded a nation yet.<br><br>
       <button class="abtn prim" onclick="openSetup()" style="width:100%">[ FOUND A NATION ]</button>
     </div>
-    <!-- Leader card (HoI4 style) -->
-    <div class="leader-card" id="leaderCard">
-      <div class="leader-card-inner">
-        <div class="leader-portrait" id="lcPortrait">👤</div>
-        <div class="leader-info">
-          <div class="leader-name" id="lcName">—</div>
-          <div class="leader-gov" id="lcGov">—</div>
-          <button class="leader-edit-btn" onclick="openFlagLeaderEditor()">✏ EDIT FLAG / LEADER</button>
-        </div>
-      </div>
+
+    <!-- Edit identity button -->
+    <div id="sbEditRow" style="display:none;padding:5px 8px;border-bottom:1px solid rgba(0,212,255,.06)">
+      <button onclick="openFlagLeaderEditor()" style="width:100%;font-family:inherit;font-size:7px;letter-spacing:.1em;padding:4px;border:1px solid rgba(0,212,255,.18);background:transparent;color:rgba(0,212,255,.4);cursor:pointer">✏ EDIT FLAG / LEADER / IDENTITY</button>
     </div>
-    <!-- Party support bars -->
+
+    <!-- Party support -->
     <div class="party-section" id="partySection" style="display:none">
       <div class="party-title">PARTY SUPPORT</div>
       <div id="partyBars"></div>
     </div>
+
+    <!-- My provinces -->
     <div id="myPS" style="display:none">
       <div class="ssec">MY PROVINCES</div>
       <div id="myPL"></div>

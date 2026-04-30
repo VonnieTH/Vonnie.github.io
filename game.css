@@ -1,19 +1,45 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-family:'Pixeloid',monospace,sans-serif;touch-action:none;}
 #g{display:flex;height:100vh;overflow:hidden;}
-/* SIDEBAR */
-#sb{width:200px;flex-shrink:0;background:#080814;border-right:1px solid rgba(0,212,255,.15);display:flex;flex-direction:column;overflow-y:auto;z-index:10;transition:width .25s ease,min-width .25s ease;min-width:200px;}
+/* ═══════ SIDEBAR — HoI4 STYLE ═══════ */
+#sb{width:214px;flex-shrink:0;background:#080c14;border-right:1px solid rgba(0,212,255,.12);display:flex;flex-direction:column;overflow-y:auto;z-index:10;transition:width .25s ease,min-width .25s ease;min-width:214px;}
 #sb::-webkit-scrollbar{width:2px;}#sb::-webkit-scrollbar-thumb{background:rgba(0,212,255,.15);}
-#sbt{padding:8px 10px;border-bottom:1px solid rgba(0,212,255,.12);flex-shrink:0;}
-.gtitle{font-size:8px;color:rgba(0,212,255,.5);letter-spacing:.16em;margin-bottom:3px;}
-.nname{font-size:12px;color:#00d4ff;text-shadow:0 0 8px rgba(0,212,255,.4);line-height:1.2;}
-.ngov{font-size:8px;color:rgba(0,212,255,.4);letter-spacing:.1em;margin-top:2px;}
-.resblock{padding:8px 10px;border-bottom:1px solid rgba(0,212,255,.08);flex-shrink:0;}
-.rrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-.rrow:last-child{margin-bottom:0;}
-.rlbl{font-size:8px;color:rgba(200,232,255,.4);letter-spacing:.1em;}
-.rval{font-size:12px;color:#00d4ff;}
-.rinc{font-size:8px;color:rgba(64,255,128,.6);margin-left:2px;}
+
+/* flag banner */
+#sbFlagBanner{width:100%;height:56px;overflow:hidden;flex-shrink:0;background:#0a0e1a;border-bottom:2px solid rgba(240,192,64,.25);position:relative;display:none;}
+#sbFlagBanner img{width:100%;height:100%;object-fit:cover;display:block;}
+#sbFlagBanner::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(8,12,20,.7));}
+
+/* nation header block */
+#sbt{padding:0;border-bottom:1px solid rgba(240,192,64,.12);flex-shrink:0;}
+.sb-nation-header{display:flex;align-items:stretch;background:rgba(240,192,64,.04);border-bottom:1px solid rgba(240,192,64,.1);padding:6px 8px;gap:7px;}
+.sb-leader-frame{width:48px;height:58px;flex-shrink:0;border:1px solid rgba(240,192,64,.35);background:rgba(240,192,64,.06);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;}
+.sb-leader-frame img{width:100%;height:100%;object-fit:cover;object-position:top;display:block;}
+.sb-nation-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;}
+.nname{font-size:11px;color:#f0c040;letter-spacing:.03em;line-height:1.2;text-shadow:0 0 8px rgba(240,192,64,.3);}
+.ngov{font-size:7px;color:rgba(200,232,255,.35);letter-spacing:.08em;margin-top:1px;}
+.sb-ruler-name{font-size:8px;color:rgba(200,232,255,.5);letter-spacing:.04em;margin-top:2px;}
+.gtitle{display:none;}
+
+/* resource block — HoI4 style */
+.resblock{padding:0;border-bottom:1px solid rgba(0,212,255,.08);flex-shrink:0;}
+.res-header{font-size:7px;color:rgba(200,232,255,.25);letter-spacing:.16em;padding:4px 8px 2px;background:rgba(0,212,255,.03);border-bottom:1px solid rgba(0,212,255,.05);}
+.rrow{display:flex;align-items:center;padding:4px 8px;border-bottom:.5px solid rgba(0,212,255,.05);gap:5px;}
+.rrow:last-child{border-bottom:none;}
+.r-icon{width:16px;text-align:center;font-size:11px;flex-shrink:0;}
+.rlbl{font-size:8px;color:rgba(200,232,255,.4);letter-spacing:.08em;flex:1;}
+.rval{font-size:11px;color:#e8d070;font-weight:bold;letter-spacing:.02em;}
+.rinc{font-size:7px;color:rgba(64,255,128,.65);margin-left:2px;}
+.rneg{font-size:7px;color:rgba(255,107,107,.65);margin-left:2px;}
+.r-bar{height:3px;background:rgba(0,212,255,.08);margin:0 8px 3px;border-radius:2px;overflow:hidden;}
+.r-bar-fill{height:100%;border-radius:2px;transition:width .5s ease;}
+
+/* stability row */
+.stab-row{padding:4px 8px 6px;display:flex;align-items:center;gap:6px;}
+.stab-label{font-size:8px;color:rgba(200,232,255,.4);letter-spacing:.08em;width:52px;}
+.stab-track{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
+.stab-fill{height:100%;border-radius:3px;transition:width .5s ease,background .5s ease;}
+.stab-val{font-size:9px;color:#c8e8ff;width:28px;text-align:right;}
 .ssec{font-size:8px;color:rgba(200,232,255,.3);letter-spacing:.16em;padding:6px 10px 3px;flex-shrink:0;}
 .pi{padding:4px 10px;font-size:9px;color:rgba(200,232,255,.6);cursor:pointer;border-left:2px solid transparent;transition:all .1s;}
 .pi:hover{background:rgba(0,212,255,.05);color:#00d4ff;}
@@ -24,18 +50,58 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 #mc{display:block;position:absolute;top:32px;left:0;cursor:grab;image-rendering:pixelated;}
 #mc.grabbing{cursor:grabbing;}
 #mi{display:none;}
-/* RIGHT PANEL */
-#rp{width:240px;flex-shrink:0;background:#080814;border-left:1px solid rgba(0,212,255,.15);display:flex;flex-direction:column;overflow-y:auto;z-index:10;transition:transform .25s ease;}
+/* ═══════ RIGHT PANEL — HoI4 STYLE ═══════ */
+#rp{width:248px;flex-shrink:0;background:#080c14;border-left:1px solid rgba(0,212,255,.12);display:flex;flex-direction:column;overflow-y:auto;z-index:10;transition:transform .25s ease;}
 #rp::-webkit-scrollbar{width:2px;}#rp::-webkit-scrollbar-thumb{background:rgba(0,212,255,.2);}
-.rph{background:rgba(0,212,255,.06);border-bottom:1px solid rgba(0,212,255,.2);padding:7px 10px;font-size:9px;color:#00d4ff;letter-spacing:.12em;flex-shrink:0;}
-.rpb{padding:10px;}
-.irow{display:flex;justify-content:space-between;padding:3px 0;border-bottom:.5px solid rgba(0,212,255,.06);font-size:9px;}
+.rph{background:rgba(0,212,255,.08);border-bottom:2px solid rgba(0,212,255,.25);padding:6px 10px;font-size:9px;color:#00d4ff;letter-spacing:.12em;flex-shrink:0;display:flex;align-items:center;gap:5px;}
+.rph-cap{color:#f0c040;font-size:10px;}
+.rpb{padding:0;}
+
+/* section headers */
+.rp-section{background:rgba(0,0,0,.3);border-bottom:1px solid rgba(0,212,255,.08);}
+.rp-section-title{font-size:7px;color:rgba(200,232,255,.3);letter-spacing:.2em;padding:5px 10px 3px;background:rgba(0,212,255,.04);border-bottom:.5px solid rgba(0,212,255,.06);}
+.rp-nation-banner{display:flex;align-items:center;gap:6px;padding:6px 10px;background:rgba(240,192,64,.03);border-bottom:.5px solid rgba(240,192,64,.08);}
+.rp-flag{height:20px;border:1px solid rgba(255,255,255,.15);flex-shrink:0;}
+.rp-nation-name{font-size:10px;color:#f0c040;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rp-portrait{width:22px;height:28px;object-fit:cover;object-position:top;border:1px solid rgba(240,192,64,.3);flex-shrink:0;}
+
+.irow{display:flex;justify-content:space-between;align-items:center;padding:4px 10px;border-bottom:.5px solid rgba(0,212,255,.04);font-size:9px;}
 .irow:last-child{border-bottom:none;}
-.ik{color:rgba(200,232,255,.4);}
+.ik{color:rgba(200,232,255,.35);font-size:8px;letter-spacing:.06em;}
 .iv{color:#c8e8ff;}
 .iv.cy{color:#00d4ff;}.iv.gd{color:#f0c040;}.iv.gr{color:#40ff80;}.iv.rd{color:#ff6b6b;}
-.rdiv{height:1px;background:rgba(0,212,255,.08);margin:8px 0;}
-.rsec{font-size:8px;color:rgba(200,232,255,.3);letter-spacing:.14em;margin-bottom:5px;}
+.rdiv{height:1px;background:rgba(0,212,255,.06);margin:4px 0;}
+.rsec{font-size:7px;color:rgba(200,232,255,.25);letter-spacing:.2em;padding:5px 10px 3px;background:rgba(0,212,255,.03);}
+
+/* population bar */
+.pop-bar-wrap{padding:4px 10px 6px;}
+.pop-bar-label{display:flex;justify-content:space-between;font-size:8px;color:rgba(200,232,255,.35);margin-bottom:3px;}
+.pop-bar-track{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;display:flex;}
+.pop-seg{height:100%;transition:width .5s ease;}
+
+/* resource chips */
+.res-chips{display:flex;flex-wrap:wrap;gap:3px;padding:4px 10px 8px;}
+.res-chip{font-size:8px;padding:2px 6px;background:rgba(240,192,64,.07);border:1px solid rgba(240,192,64,.2);color:#f0c040;border-radius:2px;}
+
+/* yield section */
+.yield-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;padding:6px 8px;}
+.yield-cell{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.08);padding:5px 4px;text-align:center;}
+.yield-icon{font-size:11px;}
+.yield-val{font-size:9px;color:#40ff80;margin-top:1px;}
+.yield-lbl{font-size:7px;color:rgba(200,232,255,.25);letter-spacing:.06em;}
+
+/* action section */
+.act-section{padding:6px 8px;display:flex;flex-direction:column;gap:4px;}
+
+/* diplomacy panel */
+.diplo-section{padding:8px 10px;}
+.diplo-nation-card{background:rgba(240,192,64,.04);border:1px solid rgba(240,192,64,.15);padding:8px 10px;margin-bottom:8px;}
+.diplo-name{font-size:11px;color:#f0c040;margin-bottom:2px;}
+.diplo-gov{font-size:8px;color:rgba(200,232,255,.35);margin-bottom:6px;}
+.diplo-stat-row{display:flex;justify-content:space-between;font-size:8px;margin-bottom:3px;}
+.diplo-stat-label{color:rgba(200,232,255,.35);}
+.diplo-stat-val{color:#c8e8ff;}
+.diplo-actions{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
 .abtn{width:100%;font-family:inherit;font-size:9px;letter-spacing:.1em;padding:6px 8px;border:1px solid;background:transparent;cursor:pointer;transition:all .15s;margin-bottom:4px;text-align:left;color:#c8e8ff;}
 .abtn.prim{border-color:rgba(0,212,255,.35);color:#00d4ff;}.abtn.prim:hover,.abtn.prim:active{background:rgba(0,212,255,.1);border-color:#00d4ff;}
 .abtn.warn{border-color:rgba(240,192,64,.35);color:#f0c040;}.abtn.warn:hover{background:rgba(240,192,64,.08);}
@@ -186,17 +252,8 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .party-track{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
 .party-fill{height:100%;border-radius:2px;transition:width .6s ease;}
 
-/* HOI4-STYLE LEADER CARD */
-.leader-card{padding:8px 10px 0;display:none;}
-.leader-card.show{display:block;}
-.leader-card-inner{display:flex;gap:8px;align-items:flex-start;border:1px solid rgba(240,192,64,.2);background:rgba(240,192,64,.04);padding:6px 8px;}
-.leader-portrait{width:52px;height:64px;object-fit:cover;object-position:top;border:1px solid rgba(240,192,64,.35);flex-shrink:0;background:rgba(240,192,64,.06);display:flex;align-items:center;justify-content:center;font-size:24px;}
-.leader-portrait img{width:100%;height:100%;object-fit:cover;object-position:top;display:block;}
-.leader-info{flex:1;min-width:0;}
-.leader-name{font-size:11px;color:#f0c040;letter-spacing:.04em;margin-bottom:2px;}
-.leader-gov{font-size:8px;color:rgba(200,232,255,.35);letter-spacing:.1em;margin-bottom:4px;}
-.leader-edit-btn{font-family:inherit;font-size:7px;letter-spacing:.08em;padding:2px 6px;border:1px solid rgba(0,212,255,.2);background:transparent;color:rgba(0,212,255,.5);cursor:pointer;transition:all .15s;width:100%;}
-.leader-edit-btn:hover{border-color:#00d4ff;color:#00d4ff;}
+/* LEADER CARD (hidden — replaced by sb-nation-header) */
+.leader-card{display:none !important;}
 
 /* FLAG/LEADER EDITOR MODAL */
 #fleModal{position:fixed;inset:0;z-index:8800;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;}
@@ -253,3 +310,23 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .law-card.active{border-color:rgba(64,255,128,.4);background:rgba(64,255,128,.04);}
 .law-name{font-size:10px;color:#f0c040;}
 .law-effect{font-size:8px;color:rgba(200,232,255,.4);margin-top:2px;}
+
+/* ═══════ ASSIMILATION COLORS ═══════ */
+.assi-bar{height:5px;background:rgba(155,109,255,.3);border-radius:2px;}
+
+/* ═══════ RIGHT PANEL SECTION ANIMATION ═══════ */
+.rp-section{animation:fadeUp .15s ease both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══════ SIDEBAR NO-NATION STATE ═══════ */
+#sbNoNatHeader{padding:14px 10px;text-align:center;border-bottom:1px solid rgba(0,212,255,.06);}
+
+/* ═══════ MOBILE SIDEBAR ═══════ */
+@media(max-width:768px){
+  #sb{width:224px;}
+  #rp{width:232px;}
+  .sb-leader-frame{width:42px;height:50px;}
+}
+
+/* ═══════ SBFLAGWRAP COMPAT ═══════ */
+#sbFlagWrap{display:none !important;}
