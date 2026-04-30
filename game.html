@@ -192,21 +192,13 @@
     <div id="tip"></div>
   </div>
 
-  <!-- Province floating panel (HoI4 bottom-left style) -->
-  <div id="provPanel">
-    <div id="provPanelInner">
-      <button id="provPanelClose" onclick="closeProvPanel()">✕</button>
-      <div id="rpH"></div>
-      <div id="rpB"></div>
+  <!-- Unified info panel (province + diplomacy) — fixed left below sidebar -->
+  <div id="infoPanel">
+    <div id="infoPanelHead">
+      <span id="rpH">SELECT A PROVINCE</span>
+      <button onclick="closeInfoPanel()">✕</button>
     </div>
-  </div>
-
-  <!-- Diplomacy floating panel -->
-  <div id="diploPanel">
-    <div id="diploPanelInner">
-      <button id="diploPanelClose" onclick="closeDiploPanel()">✕</button>
-      <div id="diploBody"></div>
-    </div>
+    <div id="rpB"></div>
   </div>
 </div>
 

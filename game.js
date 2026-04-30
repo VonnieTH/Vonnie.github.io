@@ -935,30 +935,35 @@ function showPanel(p){
   const isOwn=mn&&oid===mn.id, isCap=mn&&mn.capital_id===p.id;
   const isDiplo=!isOwn&&!!oid&&!!mn;
 
-  // If foreign nation — show diplomacy panel instead of province panel
+  // Header
+  const head=document.getElementById('infoPanelHead');
+  const rpH=document.getElementById('rpH');
   if(isDiplo){
-    closeDiploPanel._prov=p;
-    openDiploPanel(p, owner, oid);
-    return;
+    head.className='diplo-mode';
+    const flagSm=owner?.flag_url?'<img style="height:14px;border:1px solid rgba(255,255,255,.15);margin-right:4px;vertical-align:middle" src="'+owner.flag_url+'" alt="">':'';
+    rpH.innerHTML=flagSm+'DIPLOMACY';
+  } else {
+    head.className='';
+    rpH.innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+p.name.toUpperCase();
   }
 
-  // ── Province panel (own / unclaimed / no-nation) ─────────
-  closeDiploPanel();
+  // Content
+  document.getElementById('rpB').innerHTML = isDiplo
+    ? buildDiploContent(p, owner, oid)
+    : buildProvContent(p, owner, isOwn, isCap, oid);
 
+  // Open panel
+  document.getElementById('infoPanel').classList.add('open');
+}
+
+function buildProvContent(p, owner, isOwn, isCap, oid){
   const _pp=getProvPeople(p.id);
   const _ppop=getProvPopEst(p.id);
   const _pres=getProvResources(p.id);
   const _ownGroups=owner?(owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[])):[];
-
   let assiPct=0;
-  if(owner&&_ownGroups.length){
-    const seed=(p.id*17+oid*31)%100;
-    assiPct=Math.min(85,Math.max(5,seed));
-  }
+  if(owner&&_ownGroups.length){const seed=(p.id*17+(oid||0)*31)%100;assiPct=Math.min(85,Math.max(5,seed));}
   const nativePct=100-assiPct;
-
-  // Header
-  document.getElementById('rpH').innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+p.name.toUpperCase();
 
   // Nation section
   let nationSec='';
@@ -975,27 +980,27 @@ function showPanel(p){
       +'</div>';
   }
 
-  // Province section
-  const resChips=_pres.map(r=>'<span class="res-chip">'+r[0]+' '+r[1]+'</span>').join('');
-  let popBarHtml='<div class="pop-bar-wrap">'
+  // Population bar
+  const popBar='<div class="pop-bar-wrap">'
     +'<div class="pop-bar-label">'
-    +(assiPct?'<span style="color:'+_pp.color+'">'+_pp.name+' '+nativePct+'%</span><span style="color:#9b6dff">'+(_ownGroups[0]||'Settlers')+' '+assiPct+'%</span>'
-              :'<span style="color:'+_pp.color+'">'+_pp.name+'</span><span style="color:rgba(200,232,255,.3)">Unclaimed</span>')
+    +(assiPct
+      ?'<span style="color:'+_pp.color+'">'+_pp.name+' '+nativePct+'%</span><span style="color:#9b6dff">'+(_ownGroups[0]||'Settlers')+' '+assiPct+'%</span>'
+      :'<span style="color:'+_pp.color+'">'+_pp.name+'</span><span style="color:rgba(200,232,255,.25)">Unclaimed</span>')
     +'</div>'
     +'<div class="pop-bar-track">'
-    +'<div class="pop-seg" style="width:'+nativePct+'%;background:'+_pp.color+'40;border-right:'+(assiPct?'1px solid '+_pp.color+'60':'none')+'"></div>'
-    +(assiPct?'<div class="pop-seg" style="width:'+assiPct+'%;background:rgba(155,109,255,.3);border-left:1px solid rgba(155,109,255,.5)"></div>':'')
+    +'<div class="pop-seg" style="width:'+nativePct+'%;background:'+_pp.color+'40"></div>'
+    +(assiPct?'<div class="pop-seg" style="width:'+assiPct+'%;background:rgba(155,109,255,.3)"></div>':'')
     +'</div></div>';
 
+  const resChips=_pres.map(r=>'<span class="res-chip">'+r[0]+' '+r[1]+'</span>').join('');
   const provSec='<div class="rp-section">'
     +'<div class="rp-section-title">PROVINCE INFO</div>'
     +'<div class="irow"><span class="ik">TERRAIN</span><span class="iv">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)+'</span></div>'
     +'<div class="irow"><span class="ik">POPULATION</span><span class="iv">~'+_ppop+'k</span></div>'
-    +popBarHtml
+    +popBar
     +(resChips?'<div class="res-chips">'+resChips+'</div>':'')
     +'</div>';
 
-  // Yield section
   const yieldSec='<div class="rp-section">'
     +'<div class="rp-section-title">YIELD / TICK</div>'
     +'<div class="yield-grid">'
@@ -1004,59 +1009,31 @@ function showPanel(p){
     +'<div class="yield-cell"><div class="yield-icon">⚙</div><div class="yield-val">+'+p.supply+'</div><div class="yield-lbl">SUPPLIES</div></div>'
     +'</div></div>';
 
-  // Actions section
   let actContent='';
-  if(!cu){
-    actContent=btn('Login to interact','prim','document.getElementById(\'auth\').style.display=\'flex\'');
-  } else if(isOwn){
+  if(!cu) actContent=btn('Login to interact','prim','document.getElementById(\'auth\').style.display=\'flex\'');
+  else if(isOwn){
     actContent=btn('⚒ Build (Phase 3)','prim','toast(\'Building system coming in Phase 3\')');
     actContent+=btn('⚔ Recruit (Phase 4)','prim','toast(\'Military system coming in Phase 4\')');
     actContent+=btn('📜 Open Politics','warn','openPolModal()');
   } else if(!oid&&mn){
     const adj=isAdj(p.id);
     actContent=btn('▶ Claim Province (30 Gold)','prim','claimP('+p.id+')',!adj,adj?'':'Not adjacent to your territory');
-  } else if(!mn&&cu){
-    actContent=btn('⚑ Found Nation Here','prim','openSetup()');
-  }
-  const actSec='<div class="rp-section"><div class="rp-section-title">ACTIONS</div><div class="act-section">'+actContent+'</div></div>';
+  } else if(!mn&&cu) actContent=btn('⚑ Found Nation Here','prim','openSetup()');
 
-  document.getElementById('rpB').innerHTML=nationSec+provSec+yieldSec+actSec;
-
-  // Open the floating panel
-  document.getElementById('provPanel').classList.add('open');
+  return nationSec+provSec+yieldSec
+    +'<div class="rp-section"><div class="rp-section-title">ACTIONS</div><div class="act-section">'+actContent+'</div></div>';
 }
 
-// ── PROVINCE PANEL CLOSE ──────────────────────────────────
-window.closeProvPanel=function(){
-  document.getElementById('provPanel').classList.remove('open');
-  selProv=null; draw();
-};
-
-// ── DIPLOMACY PANEL ───────────────────────────────────────
-function openDiploPanel(p, diplo, oid){
-  if(!diplo)return;
-  closeProvPanel();
+function buildDiploContent(p, diplo, oid){
   const govColor=(GOVS[diplo.gov]?.color)||'#aaa';
   const territories=Object.values(ownership).filter(v=>v===oid).length;
 
-  const flagHtml=diplo.flag_url
-    ?'<img class="diplo-hero-flag" src="'+diplo.flag_url+'" alt="">'
-    :'<div class="diplo-hero-flag-placeholder">🏳</div>';
-  const portHtml=diplo.leader_url
-    ?'<img class="diplo-hero-portrait" src="'+diplo.leader_url+'" alt="">':'' ;
-
-  const header='<div class="diplo-header">'
-    +(diplo.flag_url?'<img class="diplo-flag-sm" src="'+diplo.flag_url+'" alt="">':'')
-    +'<span>DIPLOMACY</span>'
-    +'<span style="margin-left:auto;font-size:8px;color:rgba(200,232,255,.3)">'+diplo.name+'</span>'
-    +'</div>';
-
   const hero='<div class="diplo-hero">'
-    +flagHtml
+    +(diplo.flag_url?'<img class="diplo-hero-flag" src="'+diplo.flag_url+'" alt="">':'<div class="diplo-hero-flag-placeholder">🏳</div>')
     +'<div class="diplo-hero-info">'
     +'<div class="diplo-hero-name">'+diplo.name+'</div>'
     +'<div class="diplo-hero-gov" style="color:'+govColor+'">'+diplo.gov+'</div>'
-    +(diplo.ruler?'<div class="diplo-hero-leader">'+(portHtml)+'<span class="diplo-hero-ruler">'+diplo.ruler+'</span></div>':'')
+    +(diplo.ruler?'<div class="diplo-hero-leader">'+(diplo.leader_url?'<img class="diplo-hero-portrait" src="'+diplo.leader_url+'" alt="">':'')+'<span class="diplo-hero-ruler">'+diplo.ruler+'</span></div>':'')
     +'</div></div>';
 
   const stats='<div class="diplo-stats-grid">'
@@ -1067,34 +1044,33 @@ function openDiploPanel(p, diplo, oid){
     +'</div>';
 
   function dBtn(icon,label,phase,cls=''){
-    const msg=label+' coming in Phase '+phase;
-    return '<button class="diplo-act-btn '+cls+'" onclick="toast(\'' +msg+ '\')">'
-      +'<span class="diplo-act-icon">'+icon+'</span>'
-      +'<span class="diplo-act-label">'+label+'</span>'
-      +'<span class="diplo-act-phase">Phase '+phase+'</span>'
-      +'</button>';
+    const msg=label+' — Phase '+phase;
+    return '<button class="diplo-act-btn '+cls+'" onclick="toast(\''+msg+'\')">'      +'<span class="diplo-act-icon">'+icon+'</span>'      +'<span class="diplo-act-label">'+label+'</span>'      +'<span class="diplo-act-phase">Phase '+phase+'</span>'      +'</button>';
   }
 
   const actions='<div class="diplo-act-list">'
-    +'<div style="font-size:7px;color:rgba(200,232,255,.2);letter-spacing:.16em;margin-bottom:5px;padding:0 2px">DIPLOMATIC ACTIONS</div>'
+    +'<div style="font-size:7px;color:rgba(200,232,255,.2);letter-spacing:.16em;margin-bottom:5px">DIPLOMATIC ACTIONS</div>'
     +dBtn('✉','Send a Note',3)
     +dBtn('🤝','Offer Trade Deal',3)
     +dBtn('🛡','Offer Defensive Pact',3)
     +dBtn('📜','Non-Aggression Pact',3)
     +dBtn('🔗','Request Alliance',3)
     +dBtn('💬','Send Envoy',3)
-    +'<div style="height:1px;background:rgba(255,107,107,.1);margin:6px 0"></div>'
+    +'<div style="height:1px;background:rgba(255,107,107,.12);margin:5px 0"></div>'
     +dBtn('⚔','Declare War',4,'dng')
     +'</div>';
 
-  document.getElementById('diploBody').innerHTML=header+hero+stats+actions;
-  document.getElementById('diploPanel').classList.add('open');
+  return hero+stats+actions;
 }
 
-window.closeDiploPanel=function(){
-  document.getElementById('diploPanel').classList.remove('open');
+// Close info panel
+window.closeInfoPanel=function(){
+  document.getElementById('infoPanel').classList.remove('open');
+  selProv=null; draw();
 };
-
+// Compat aliases
+window.closeProvPanel=window.closeInfoPanel;
+window.closeDiploPanel=window.closeInfoPanel;
 
 
 // ── GOV MODAL ──────────────────────────────────────────────

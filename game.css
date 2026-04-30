@@ -47,11 +47,77 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .pisub{font-size:7px;color:rgba(200,232,255,.3);}
 /* MAP */
 #ma{flex:1;position:relative;overflow:hidden;background:#0a0a14;touch-action:none;}
+/* ═══════ UNIFIED INFO PANEL — slides in from left, below sb ═══════ */
+#infoPanel{
+  position:fixed;
+  left:214px;
+  top:32px;
+  bottom:0;
+  width:268px;
+  background:#080c14;
+  border-right:1px solid rgba(0,212,255,.2);
+  border-top:1px solid rgba(0,212,255,.15);
+  display:flex;
+  flex-direction:column;
+  z-index:350;
+  transform:translateX(-100%);
+  transition:transform .25s cubic-bezier(.22,.8,.36,1);
+  overflow:hidden;
+  box-shadow:4px 0 20px rgba(0,0,0,.5);
+}
+#infoPanel.open{transform:translateX(0);}
+
+#infoPanelHead{
+  background:rgba(0,212,255,.08);
+  border-bottom:2px solid rgba(0,212,255,.28);
+  padding:7px 10px 7px 12px;
+  font-size:10px;color:#00d4ff;letter-spacing:.1em;
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+}
+#infoPanelHead button{
+  background:none;border:none;color:rgba(200,232,255,.3);
+  font-size:11px;cursor:pointer;padding:2px 4px;
+  transition:color .15s;
+}
+#infoPanelHead button:hover{color:#ff6b6b;}
+
+/* rpH inside infoPanelHead */
+#rpH{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rph-cap{color:#f0c040;}
+
+/* rpB scrollable content */
+#rpB{overflow-y:auto;flex:1;}
+#rpB::-webkit-scrollbar{width:2px;}
+#rpB::-webkit-scrollbar-thumb{background:rgba(0,212,255,.2);}
+
+/* Diplomacy header style inside rpB */
+.diplo-header{
+  background:rgba(155,109,255,.1);
+  border-bottom:2px solid rgba(155,109,255,.3);
+  padding:6px 12px;
+  font-size:9px;color:#9b6dff;letter-spacing:.14em;
+  display:flex;align-items:center;gap:6px;
+  flex-shrink:0;
+}
+#infoPanelHead.diplo-mode{
+  background:rgba(155,109,255,.1);
+  border-bottom-color:rgba(155,109,255,.35);
+  color:#9b6dff;
+}
+
+/* Mobile */
+@media(max-width:768px){
+  #infoPanel{left:0;width:100%;top:auto;bottom:0;height:60vh;
+    transform:translateY(100%);border-right:none;border-top:1px solid rgba(0,212,255,.2);}
+  #infoPanel.open{transform:translateY(0);}
+}
+
 #mc{display:block;position:absolute;top:32px;left:0;cursor:grab;image-rendering:pixelated;}
 #mc.grabbing{cursor:grabbing;}
 #mi{display:none;}
 /* ═══════ PROVINCE FLOATING PANEL — HoI4 BOTTOM-LEFT ═══════ */
-#rp{display:none !important;} /* removed */
+#rp{display:none !important;width:0;min-width:0;flex:none;} /* removed */
 #provPanel{
   position:fixed;
   left:218px; bottom:-400px;
@@ -77,18 +143,9 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
   transition:color .15s;
 }
 #provPanelClose:hover{color:#ff6b6b;}
-#rpH{
-  background:rgba(0,212,255,.08);
-  border-bottom:2px solid rgba(0,212,255,.3);
-  padding:7px 28px 7px 10px;
-  font-size:10px;color:#00d4ff;letter-spacing:.12em;
-  flex-shrink:0;
-}
+/* #rpH moved to #infoPanelHead */
 .rph-cap{color:#f0c040;}
-#rpB{overflow-y:auto;flex:1;}
-#rpB::-webkit-scrollbar{width:2px;}
-#rpB::-webkit-scrollbar-thumb{background:rgba(0,212,255,.2);}
-.rpb{padding:0;}
+/* #rpB moved to #infoPanel */
 
 /* section headers */
 .rp-section{background:rgba(0,0,0,.3);border-bottom:1px solid rgba(0,212,255,.08);}
