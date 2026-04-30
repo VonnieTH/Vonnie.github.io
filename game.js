@@ -930,6 +930,13 @@ function isAdj(pid){
   return neighbors.some(nid=>ownership[nid]===mn.id);
 }
 
+// ── ACTION BUTTON HELPER ───────────────────────────────────
+function btn(label, cls, onclick, disabled=false, title=''){
+  return '<button class="abtn '+cls+'" onclick="'+onclick+'"'
+    +(disabled?' disabled':'')+' title="'+title+'">'
+    +label+'</button>';
+}
+
 function showPanel(p){
   const oid=ownership[p.id], owner=oid?nations[oid]:null;
   const isOwn=mn&&oid===mn.id, isCap=mn&&mn.capital_id===p.id;
