@@ -930,37 +930,75 @@ function isAdj(pid){
   return neighbors.some(nid=>ownership[nid]===mn.id);
 }
 
-function showPanel(p){
-  const oid=ownership[p.id], owner=oid?nations[oid]:null;
-  const isOwn=mn&&oid===mn.id, isCap=mn&&mn.capital_id===p.id;
-  const isDiplo=!isOwn&&!!oid&&!!mn;
+// ── Current tab state ────────────────────────────────────
+let _ipTab='prov', _ipProv=null;
 
-  // If foreign nation — show diplomacy panel instead of province panel
+function showPanel(p){
+  _ipProv=p;
+  const oid=ownership[p.id], owner=oid?nations[oid]:null;
+  const isOwn=mn&&oid===mn.id;
+  const isDiplo=!isOwn&&!!oid&&!!mn;
+  const isCap=mn&&mn.capital_id===p.id;
+
+  const panel=document.getElementById('infoPanel');
+  const tabs=document.getElementById('infoPanelTabs');
+  const head=document.getElementById('infoPanelHead');
+  const ipFlag=document.getElementById('ipFlag');
+  const rpH=document.getElementById('rpH');
+
   if(isDiplo){
-    closeDiploPanel._prov=p;
-    openDiploPanel(p, owner, oid);
-    return;
+    // ── DIPLOMACY mode ──────────────────────────────────
+    tabs.style.display='none';
+    head.className='diplo';
+    if(owner?.flag_url){ipFlag.src=owner.flag_url;ipFlag.style.display='block';}
+    else ipFlag.style.display='none';
+    rpH.textContent='DIPLOMACY';
+    document.getElementById('rpB').innerHTML=buildDiploContent(p,owner,oid);
+  } else {
+    // ── OWN / UNCLAIMED mode ────────────────────────────
+    head.className='';
+    ipFlag.style.display='none';
+    rpH.innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+p.name.toUpperCase();
+    if(isOwn){
+      tabs.style.display='flex';
+      _ipTab='prov';
+      document.getElementById('ipTabProv').classList.add('active');
+      document.getElementById('ipTabPol').classList.remove('active');
+    } else {
+      tabs.style.display='none';
+    }
+    document.getElementById('rpB').innerHTML=buildProvContent(p,owner,isOwn,isCap,oid);
   }
 
-  // ── Province panel (own / unclaimed / no-nation) ─────────
-  closeDiploPanel();
+  panel.classList.add('open');
+}
 
+// Switch between Province / Political tabs
+window.ipSwitchTab=function(tab){
+  _ipTab=tab;
+  document.getElementById('ipTabProv').classList.toggle('active',tab==='prov');
+  document.getElementById('ipTabPol').classList.toggle('active',tab==='pol');
+  if(!_ipProv)return;
+  if(tab==='prov'){
+    const oid=ownership[_ipProv.id],owner=oid?nations[oid]:null;
+    const isOwn=mn&&oid===mn.id,isCap=mn&&mn.capital_id===_ipProv.id;
+    document.getElementById('rpB').innerHTML=buildProvContent(_ipProv,owner,isOwn,isCap,oid);
+  } else {
+    document.getElementById('rpB').innerHTML=buildPolContent();
+  }
+};
+
+// ── PROVINCE CONTENT ─────────────────────────────────────
+function buildProvContent(p,owner,isOwn,isCap,oid){
   const _pp=getProvPeople(p.id);
   const _ppop=getProvPopEst(p.id);
   const _pres=getProvResources(p.id);
   const _ownGroups=owner?(owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[])):[];
-
   let assiPct=0;
-  if(owner&&_ownGroups.length){
-    const seed=(p.id*17+oid*31)%100;
-    assiPct=Math.min(85,Math.max(5,seed));
-  }
+  if(owner&&_ownGroups.length){const seed=(p.id*17+(oid||0)*31)%100;assiPct=Math.min(85,Math.max(5,seed));}
   const nativePct=100-assiPct;
 
-  // Header
-  document.getElementById('rpH').innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+p.name.toUpperCase();
-
-  // Nation section
+  // Nation banner (if owned)
   let nationSec='';
   if(owner){
     const govColor=(GOVS[owner.gov]?.color)||'#aaa';
@@ -969,33 +1007,34 @@ function showPanel(p){
     nationSec='<div class="rp-section">'
       +'<div class="rp-section-title">NATION</div>'
       +'<div class="rp-nation-banner">'+flagHtml+'<span class="rp-nation-name">'+owner.name+'</span>'+portHtml+'</div>'
-      +'<div class="irow"><span class="ik">GOVERNMENT</span><span class="iv" style="color:'+govColor+'">'+owner.gov+'</span></div>'
+      +'<div class="irow"><span class="ik">GOV</span><span class="iv" style="color:'+govColor+'">'+owner.gov+'</span></div>'
       +(owner.ruler?'<div class="irow"><span class="ik">RULER</span><span class="iv cy">'+owner.ruler+'</span></div>':'')
       +'<div class="irow"><span class="ik">STABILITY</span><span class="iv '+(owner.stability>60?'gr':owner.stability>30?'':'rd')+'">'+owner.stability+'%</span></div>'
       +'</div>';
   }
 
-  // Province section
-  const resChips=_pres.map(r=>'<span class="res-chip">'+r[0]+' '+r[1]+'</span>').join('');
-  let popBarHtml='<div class="pop-bar-wrap">'
+  // Population bar
+  const popBar='<div class="pop-bar-wrap">'
     +'<div class="pop-bar-label">'
-    +(assiPct?'<span style="color:'+_pp.color+'">'+_pp.name+' '+nativePct+'%</span><span style="color:#9b6dff">'+(_ownGroups[0]||'Settlers')+' '+assiPct+'%</span>'
-              :'<span style="color:'+_pp.color+'">'+_pp.name+'</span><span style="color:rgba(200,232,255,.3)">Unclaimed</span>')
+    +(assiPct
+      ?'<span style="color:'+_pp.color+'">'+_pp.name+' '+nativePct+'%</span><span style="color:#9b6dff">'+(_ownGroups[0]||'Settlers')+' '+assiPct+'%</span>'
+      :'<span style="color:'+_pp.color+'">'+_pp.name+'</span><span style="color:rgba(200,232,255,.25)">Unclaimed</span>')
     +'</div>'
     +'<div class="pop-bar-track">'
-    +'<div class="pop-seg" style="width:'+nativePct+'%;background:'+_pp.color+'40;border-right:'+(assiPct?'1px solid '+_pp.color+'60':'none')+'"></div>'
-    +(assiPct?'<div class="pop-seg" style="width:'+assiPct+'%;background:rgba(155,109,255,.3);border-left:1px solid rgba(155,109,255,.5)"></div>':'')
+    +'<div class="pop-seg" style="width:'+nativePct+'%;background:'+_pp.color+'50"></div>'
+    +(assiPct?'<div class="pop-seg" style="width:'+assiPct+'%;background:rgba(155,109,255,.35)"></div>':'')
     +'</div></div>';
+
+  const resChips=_pres.map(r=>'<span class="res-chip">'+r[0]+' '+r[1]+'</span>').join('');
 
   const provSec='<div class="rp-section">'
     +'<div class="rp-section-title">PROVINCE INFO</div>'
     +'<div class="irow"><span class="ik">TERRAIN</span><span class="iv">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)+'</span></div>'
     +'<div class="irow"><span class="ik">POPULATION</span><span class="iv">~'+_ppop+'k</span></div>'
-    +popBarHtml
+    +popBar
     +(resChips?'<div class="res-chips">'+resChips+'</div>':'')
     +'</div>';
 
-  // Yield section
   const yieldSec='<div class="rp-section">'
     +'<div class="rp-section-title">YIELD / TICK</div>'
     +'<div class="yield-grid">'
@@ -1004,97 +1043,132 @@ function showPanel(p){
     +'<div class="yield-cell"><div class="yield-icon">⚙</div><div class="yield-val">+'+p.supply+'</div><div class="yield-lbl">SUPPLIES</div></div>'
     +'</div></div>';
 
-  // Actions section
+  // Actions
   let actContent='';
-  if(!cu){
-    actContent=btn('Login to interact','prim','document.getElementById(\'auth\').style.display=\'flex\'');
-  } else if(isOwn){
-    actContent=btn('⚒ Build (Phase 3)','prim','toast(\'Building system coming in Phase 3\')');
-    actContent+=btn('⚔ Recruit (Phase 4)','prim','toast(\'Military system coming in Phase 4\')');
-    actContent+=btn('📜 Open Politics','warn','openPolModal()');
+  if(!cu) actContent=btn('Login to interact','prim','document.getElementById(\'auth\').style.display=\'flex\'');
+  else if(isOwn){
+    actContent=btn('⚒ Build','prim','toast(\'Building — Phase 3\')');
+    actContent+=btn('⚔ Recruit','prim','toast(\'Military — Phase 4\')');
   } else if(!oid&&mn){
     const adj=isAdj(p.id);
-    actContent=btn('▶ Claim Province (30 Gold)','prim','claimP('+p.id+')',!adj,adj?'':'Not adjacent to your territory');
-  } else if(!mn&&cu){
-    actContent=btn('⚑ Found Nation Here','prim','openSetup()');
-  }
+    actContent=btn('▶ Claim Province (30 Gold)','prim','claimP('+p.id+')',!adj,adj?'':'Not adjacent');
+  } else if(!mn&&cu) actContent=btn('⚑ Found Nation Here','prim','openSetup()');
+
   const actSec='<div class="rp-section"><div class="rp-section-title">ACTIONS</div><div class="act-section">'+actContent+'</div></div>';
-
-  document.getElementById('rpB').innerHTML=nationSec+provSec+yieldSec+actSec;
-
-  // Open the floating panel
-  document.getElementById('provPanel').classList.add('open');
+  return nationSec+provSec+yieldSec+actSec;
 }
 
-// ── PROVINCE PANEL CLOSE ──────────────────────────────────
-window.closeProvPanel=function(){
-  document.getElementById('provPanel').classList.remove('open');
-  selProv=null; draw();
-};
+// ── POLITICAL TAB CONTENT ────────────────────────────────
+function buildPolContent(){
+  if(!mn) return '<div style="padding:16px;font-size:9px;color:rgba(200,232,255,.3);text-align:center">No nation</div>';
 
-// ── DIPLOMACY PANEL ───────────────────────────────────────
-function openDiploPanel(p, diplo, oid){
-  if(!diplo)return;
-  closeProvPanel();
+  const ps=mn.party_support||{};
+  const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]);
+  const activeLaws=mn.active_laws||[];
+  const pending=mn.pending_laws||{};
+  const cabinet=mn.cabinet||{};
+
+  // Party support bars
+  let partySec='<div class="pol-section-hdr">PARTY SUPPORT</div>';
+  partySec+=sorted.map(([name,pct])=>{
+    const g=GOVS[name];const col=g?.color||'#888';const isCur=name===mn.gov;
+    return '<div style="padding:3px 8px">'
+      +'<div style="display:flex;justify-content:space-between;font-size:8px;margin-bottom:2px">'
+      +'<span style="color:'+(isCur?col:'rgba(200,232,255,.5)')+'">'+name+(isCur?' ★':'')+'</span>'
+      +'<span style="color:'+col+'">'+pct+'%</span></div>'
+      +'<div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">'
+      +'<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:2px"></div>'
+      +'</div></div>';
+  }).join('');
+
+  // Active laws
+  let lawSec='<div class="pol-section-hdr">ACTIVE LAWS ('+(activeLaws.length)+'/4)</div>';
+  if(activeLaws.length){
+    lawSec+=activeLaws.map(k=>{
+      const l=LAWS[k];if(!l)return'';
+      const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff',Trade:'#40d4cc',Science:'#c0e0ff',Social:'#ffb347',Environment:'#7fff7f'}[l.cat]||'#aaa';
+      return '<div style="padding:4px 8px 4px 10px;border-left:2px solid '+catColor+'40;margin:2px 8px;background:rgba(0,0,0,.2)">'
+        +'<div style="font-size:9px;color:'+catColor+'">'+l.name+'</div>'
+        +'<div style="font-size:7px;color:rgba(200,232,255,.3);margin-top:1px">'+l.cat+'</div>'
+        +'</div>';
+    }).join('');
+  } else lawSec+='<div style="padding:4px 8px;font-size:8px;color:rgba(200,232,255,.25)">No laws enacted</div>';
+
+  // Pending laws
+  let pendSec='';
+  const pendKeys=Object.keys(pending);
+  if(pendKeys.length){
+    pendSec='<div class="pol-section-hdr">PENDING LAWS</div>';
+    pendSec+=pendKeys.map(k=>{
+      const l=LAWS[k];if(!l)return'';
+      return '<div style="padding:3px 8px;font-size:8px;color:rgba(240,192,64,.5)">⏳ '+l.name+'</div>';
+    }).join('');
+  }
+
+  // Open full politics button
+  const openBtn='<div style="padding:8px 8px 10px">'
+    +btn('📜 Open Full Politics','warn','openPolModal()')
+    +'</div>';
+
+  return '<div class="pol-tab-inner">'+partySec+lawSec+pendSec+'</div>'+openBtn;
+}
+
+// ── DIPLOMACY CONTENT ────────────────────────────────────
+function buildDiploContent(p,diplo,oid){
+  if(!diplo) return '';
   const govColor=(GOVS[diplo.gov]?.color)||'#aaa';
   const territories=Object.values(ownership).filter(v=>v===oid).length;
 
-  const flagHtml=diplo.flag_url
+  const flagEl=diplo.flag_url
     ?'<img class="diplo-hero-flag" src="'+diplo.flag_url+'" alt="">'
-    :'<div class="diplo-hero-flag-placeholder">🏳</div>';
-  const portHtml=diplo.leader_url
-    ?'<img class="diplo-hero-portrait" src="'+diplo.leader_url+'" alt="">':'' ;
+    :'<div class="diplo-hero-flag-ph">🏳</div>';
+  const portEl=diplo.leader_url
+    ?'<img class="diplo-hero-portrait" src="'+diplo.leader_url+'" alt="">':'';
 
-  const header='<div class="diplo-header">'
-    +(diplo.flag_url?'<img class="diplo-flag-sm" src="'+diplo.flag_url+'" alt="">':'')
-    +'<span>DIPLOMACY</span>'
-    +'<span style="margin-left:auto;font-size:8px;color:rgba(200,232,255,.3)">'+diplo.name+'</span>'
-    +'</div>';
-
-  const hero='<div class="diplo-hero">'
-    +flagHtml
+  const hero='<div class="diplo-hero">'+flagEl
     +'<div class="diplo-hero-info">'
     +'<div class="diplo-hero-name">'+diplo.name+'</div>'
     +'<div class="diplo-hero-gov" style="color:'+govColor+'">'+diplo.gov+'</div>'
-    +(diplo.ruler?'<div class="diplo-hero-leader">'+(portHtml)+'<span class="diplo-hero-ruler">'+diplo.ruler+'</span></div>':'')
+    +(diplo.ruler?'<div class="diplo-hero-ruler">'+portEl+'<span class="diplo-ruler-name">'+diplo.ruler+'</span></div>':'')
     +'</div></div>';
 
   const stats='<div class="diplo-stats-grid">'
-    +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">STABILITY</div><div class="diplo-stat-val '+(diplo.stability>60?'iv gr':diplo.stability>30?'iv':'iv rd')+'">'+diplo.stability+'%</div></div>'
+    +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">STABILITY</div>'
+    +'<div class="diplo-stat-val '+(diplo.stability>60?'iv gr':diplo.stability>30?'iv':'iv rd')+'">'+diplo.stability+'%</div></div>'
     +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">TERRITORIES</div><div class="diplo-stat-val">'+territories+'</div></div>'
     +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">PROVINCE</div><div class="diplo-stat-val" style="font-size:8px">'+p.name+'</div></div>'
     +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">TERRAIN</div><div class="diplo-stat-val" style="font-size:9px">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)+'</div></div>'
     +'</div>';
 
   function dBtn(icon,label,phase,cls=''){
-    const msg=label+' coming in Phase '+phase;
-    return '<button class="diplo-act-btn '+cls+'" onclick="toast(\'' +msg+ '\')">'
+    const msg=label+' — Phase '+phase;
+    return '<button class="diplo-act-btn '+cls+'" onclick="toast(\''+msg+'\')">'
       +'<span class="diplo-act-icon">'+icon+'</span>'
       +'<span class="diplo-act-label">'+label+'</span>'
-      +'<span class="diplo-act-phase">Phase '+phase+'</span>'
+      +'<span class="diplo-act-phase">Ph.'+phase+'</span>'
       +'</button>';
   }
 
   const actions='<div class="diplo-act-list">'
-    +'<div style="font-size:7px;color:rgba(200,232,255,.2);letter-spacing:.16em;margin-bottom:5px;padding:0 2px">DIPLOMATIC ACTIONS</div>'
+    +'<div class="diplo-act-head">DIPLOMATIC ACTIONS</div>'
     +dBtn('✉','Send a Note',3)
     +dBtn('🤝','Offer Trade Deal',3)
     +dBtn('🛡','Offer Defensive Pact',3)
     +dBtn('📜','Non-Aggression Pact',3)
     +dBtn('🔗','Request Alliance',3)
     +dBtn('💬','Send Envoy',3)
-    +'<div style="height:1px;background:rgba(255,107,107,.1);margin:6px 0"></div>'
+    +'<div style="height:1px;background:rgba(255,107,107,.1);margin:5px 0"></div>'
     +dBtn('⚔','Declare War',4,'dng')
     +'</div>';
 
-  document.getElementById('diploBody').innerHTML=header+hero+stats+actions;
-  document.getElementById('diploPanel').classList.add('open');
+  return hero+stats+actions;
 }
 
-window.closeDiploPanel=function(){
-  document.getElementById('diploPanel').classList.remove('open');
+// ── CLOSE ─────────────────────────────────────────────────
+window.closeInfoPanel=window.closeProvPanel=window.closeDiploPanel=function(){
+  document.getElementById('infoPanel').classList.remove('open');
+  selProv=null; draw();
 };
-
 
 
 // ── GOV MODAL ──────────────────────────────────────────────
