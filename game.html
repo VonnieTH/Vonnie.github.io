@@ -101,13 +101,13 @@
 <div id="g">
   <div id="sbOverlay" onclick="closePanels()" style="display:none;position:fixed;inset:0;z-index:290;background:rgba(0,0,0,.55);"></div>
   <div id="sb">
-    <!-- HoI4-style flag banner -->
-    <div id="sbFlagBanner"><img id="sbFlagImg" src="" alt=""></div>
+    <!-- HoI4-style flag banner — click to open Political panel -->
+    <div id="sbFlagBanner" onclick="toggleNatPanel()" title="[Q] Open Political Panel" style="cursor:pointer"><img id="sbFlagImg" src="" alt=""></div>
 
     <!-- Nation header: leader portrait + name/gov -->
     <div id="sbt">
       <div class="sb-nation-header" id="sbNationHeader" style="display:none">
-        <div class="sb-leader-frame" id="sbLeaderFrame">👤</div>
+        <div class="sb-leader-frame" id="sbLeaderFrame" onclick="toggleNatPanel()" title="[Q] Open Political Panel" style="cursor:pointer">👤</div>
         <div class="sb-nation-info">
           <div class="nname" id="sbN">—</div>
           <div class="ngov" id="sbG"></div>
@@ -172,6 +172,7 @@
       <span style="margin-left:auto;display:flex;align-items:center;gap:6px">
         <span style="font-size:7px;color:#f0c040;border:1px solid rgba(240,192,64,.4);padding:1px 5px;display:none" id="ownerBadge">★ OWNER</span>
         <button id="ownerBtn" onclick="openOwner()" style="display:none;font-family:inherit;font-size:7px;letter-spacing:.1em;padding:2px 6px;border:1px solid rgba(240,192,64,.35);background:transparent;color:#f0c040;cursor:pointer">⚙ ADMIN</button>
+        <button onclick="toggleNatPanel()" style="font-family:inherit;font-size:7px;letter-spacing:.1em;padding:2px 6px;border:1px solid rgba(0,212,255,.2);background:transparent;color:rgba(0,212,255,.5);cursor:pointer" title="Open Political Panel [Q]">📜 [Q]</button>
         <a href="index.html" class="tbl">← WIKI</a><span class="tbs">|</span>
         <a href="community.html" class="tbl">COMMUNITY</a><span class="tbs">|</span>
         <button onclick="doLogout()" style="background:none;border:none;color:rgba(255,107,107,.5);font-family:inherit;font-size:8px;letter-spacing:.1em;cursor:pointer">LOGOUT</button>

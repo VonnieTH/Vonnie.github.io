@@ -6,14 +6,16 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 #sb::-webkit-scrollbar{width:2px;}#sb::-webkit-scrollbar-thumb{background:rgba(0,212,255,.15);}
 
 /* flag banner */
-#sbFlagBanner{width:100%;height:56px;overflow:hidden;flex-shrink:0;background:#0a0e1a;border-bottom:2px solid rgba(240,192,64,.25);position:relative;display:none;}
+#sbFlagBanner{width:100%;height:56px;overflow:hidden;flex-shrink:0;background:#0a0e1a;border-bottom:2px solid rgba(240,192,64,.25);position:relative;display:none;transition:filter .15s;}
+#sbFlagBanner:hover{filter:brightness(1.15);}
 #sbFlagBanner img{width:100%;height:100%;object-fit:cover;display:block;}
-#sbFlagBanner::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(8,12,20,.7));}
+#sbFlagBanner::after{content:'';position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(8,12,20,.7));pointer-events:none;}
 
 /* nation header block */
 #sbt{padding:0;border-bottom:1px solid rgba(240,192,64,.12);flex-shrink:0;}
 .sb-nation-header{display:flex;align-items:stretch;background:rgba(240,192,64,.04);border-bottom:1px solid rgba(240,192,64,.1);padding:6px 8px;gap:7px;}
-.sb-leader-frame{width:48px;height:58px;flex-shrink:0;border:1px solid rgba(240,192,64,.35);background:rgba(240,192,64,.06);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;}
+.sb-leader-frame{width:48px;height:58px;flex-shrink:0;border:1px solid rgba(240,192,64,.35);background:rgba(240,192,64,.06);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:22px;position:relative;transition:border-color .15s,box-shadow .15s;}
+.sb-leader-frame:hover{border-color:rgba(240,192,64,.7);box-shadow:0 0 8px rgba(240,192,64,.25);}
 .sb-leader-frame img{width:100%;height:100%;object-fit:cover;object-position:top;display:block;}
 .sb-nation-info{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:2px;}
 .nname{font-size:11px;color:#f0c040;letter-spacing:.03em;line-height:1.2;text-shadow:0 0 8px rgba(240,192,64,.3);}
@@ -58,18 +60,18 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 #infoPanel{
   position:fixed;left:214px;bottom:0;width:310px;max-height:76vh;
   background:#07090f;border:1px solid rgba(0,212,255,.22);border-bottom:none;
-  box-shadow:4px -4px 32px rgba(0,0,0,.75);
-  display:flex;flex-direction:column;z-index:450;
-  transform:translateY(calc(100% + 2px));
-  transition:transform .26s cubic-bezier(.22,.8,.36,1);pointer-events:none;
+  box-shadow:6px -6px 40px rgba(0,0,0,.85);
+  display:flex;flex-direction:column;z-index:500;
+  transform:translateY(calc(100% + 4px));
+  transition:transform .24s cubic-bezier(.22,.8,.36,1);pointer-events:none;
 }
 #infoPanel.open{transform:translateY(0);pointer-events:all;}
-/* Province info card (bottom-left, always visible when province selected) */
+/* Province info card (bottom-left, shows on province click) */
 #provCard{
   position:fixed;left:214px;bottom:0;width:310px;
   background:#07090f;border:1px solid rgba(0,212,255,.18);border-bottom:none;
   box-shadow:4px -4px 24px rgba(0,0,0,.6);
-  z-index:440;pointer-events:none;opacity:0;
+  z-index:480;pointer-events:none;opacity:0;
   transition:opacity .22s ease, transform .22s ease;
   transform:translateY(8px);
   font-family:var(--mono);

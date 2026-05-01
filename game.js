@@ -257,6 +257,12 @@ window.addEventListener('mousemove',e=>{
     if(!dragMoved&&Math.abs(dx)+Math.abs(dy)>5){dragMoved=true;canvas.classList.add('grabbing');}
     if(dragMoved){panX=dragPanX+dx;panY=dragPanY+dy;clampPan();draw();return;}
   }
+  // Hide tooltip when hovering over UI elements (sidebar, panels, modals)
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  if(el&&el!==canvas&&!canvas.contains(el)){
+    document.getElementById('tip').style.display='none';
+    return;
+  }
   const r=canvas.getBoundingClientRect();
   const mp=screenToMap(e.clientX-r.left,e.clientY-r.top);
   showTip(e.clientX,e.clientY,mp.x,mp.y);
@@ -935,53 +941,66 @@ let _ipTab='prov', _ipProv=null;
 
 // ── PROVINCE CARD (bottom-left quick info) ───────────────
 function showProvCard(p){
+  // Safe: check elements exist (provCard may not be ready in some game states)
+  const elCheck=document.getElementById('pcardProvName');
+  if(!elCheck) return;
+
   const oid=ownership[p.id], owner=oid?nations[oid]:null;
   const _pp=getProvPeople(p.id);
   const _ppop=getProvPopEst(p.id);
 
-  // Flag
+  // Flag — rebuild innerHTML safely
   const fw=document.getElementById('pcardFlagWrap');
-  const ph=document.getElementById('pcardFlagPh');
-  if(owner?.flag_url){
-    fw.innerHTML='<img class="pcard-flag" src="'+owner.flag_url+'" alt="" style="object-fit:contain;max-height:56px;">';
-  } else {
-    ph.textContent=oid?'🏳':'🗺'; fw.innerHTML=''; fw.appendChild(ph);
+  if(fw){
+    if(owner?.flag_url){
+      fw.innerHTML='<img class="pcard-flag" src="'+owner.flag_url+'" alt="" style="object-fit:contain;width:70px;height:56px;">';
+    } else {
+      fw.innerHTML='<div class="pcard-flag-ph" id="pcardFlagPh">'+(oid?'🏳':'🗺')+'</div>';
+    }
   }
   // Province name & info
   document.getElementById('pcardProvName').textContent=p.name;
-  document.getElementById('pcardNationName').textContent=owner?owner.name:'Unclaimed territory';
-  document.getElementById('pcardNationName').style.color=owner?'#f0c040':'rgba(200,232,255,.3)';
-  document.getElementById('pcardTerrain').textContent=p.terrain[0].toUpperCase()+p.terrain.slice(1)+' · ~'+_ppop+'k pop';
+  const natNameEl=document.getElementById('pcardNationName');
+  if(natNameEl){natNameEl.textContent=owner?owner.name:'Unclaimed territory';natNameEl.style.color=owner?'#f0c040':'rgba(200,232,255,.3)';}
+  const terrEl=document.getElementById('pcardTerrain');
+  if(terrEl) terrEl.textContent=p.terrain[0].toUpperCase()+p.terrain.slice(1)+' · ~'+_ppop+'k pop';
   // Owner badge
   const badge=document.getElementById('pcardOwnerBadge');
-  if(mn&&oid===mn.id){badge.textContent='★ YOUR TERRITORY';badge.style.color='rgba(240,192,64,.7)';badge.style.borderColor='rgba(240,192,64,.25)';}
-  else if(oid){badge.textContent='FOREIGN TERRITORY';badge.style.color='rgba(155,109,255,.7)';badge.style.borderColor='rgba(155,109,255,.2)';}
-  else{badge.textContent='UNCLAIMED';badge.style.color='rgba(200,232,255,.25)';badge.style.borderColor='rgba(200,232,255,.1)';}
+  if(badge){
+    if(mn&&oid===mn.id){badge.textContent='★ YOUR TERRITORY';badge.style.color='rgba(240,192,64,.7)';badge.style.borderColor='rgba(240,192,64,.25)';}
+    else if(oid){badge.textContent='FOREIGN TERRITORY';badge.style.color='rgba(155,109,255,.7)';badge.style.borderColor='rgba(155,109,255,.2)';}
+    else{badge.textContent='UNCLAIMED';badge.style.color='rgba(200,232,255,.25)';badge.style.borderColor='rgba(200,232,255,.1)';}
+  }
   // Leader portrait
   const pw=document.getElementById('pcardPortraitWrap');
   const pi=document.getElementById('pcardPortrait');
-  if(owner?.leader_url){pi.src=owner.leader_url;pw.style.display='';}
-  else pw.style.display='none';
+  if(pw&&pi){if(owner?.leader_url){pi.src=owner.leader_url;pw.style.display='';}else pw.style.display='none';}
   // Stats
-  document.getElementById('pcardGold').textContent='+'+p.gold;
-  document.getElementById('pcardMP').textContent='+'+p.manpower;
-  document.getElementById('pcardSup').textContent='+'+p.supply;
+  const gEl=document.getElementById('pcardGold'),mEl=document.getElementById('pcardMP'),sEl=document.getElementById('pcardSup');
+  if(gEl) gEl.textContent='+'+p.gold;
+  if(mEl) mEl.textContent='+'+p.manpower;
+  if(sEl) sEl.textContent='+'+p.supply;
   // People
   const ppl=document.getElementById('pcardPeople');
-  let pplText='<span style="color:'+_pp.color+'">'+_pp.name+' peoples</span>';
-  if(owner){
-    const groups=owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[]);
-    if(groups.length) pplText+=' · <span style="color:#9b6dff">'+groups.join(', ')+'</span>';
+  if(ppl){
+    let pplText='<span style="color:'+_pp.color+'">'+_pp.name+' peoples</span>';
+    if(owner){
+      const groups=owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[]);
+      if(groups.length) pplText+=' · <span style="color:#9b6dff">'+groups.join(', ')+'</span>';
+    }
+    ppl.innerHTML=pplText;
   }
-  ppl.innerHTML=pplText;
   // Open btn label
   const isOwn=mn&&oid===mn.id;
   const isDiplo=!isOwn&&oid&&mn;
-  document.getElementById('pcardOpenBtn').textContent=isDiplo?'[ DIPLOMACY → ]':isOwn?'[ MANAGE → ]':'[ VIEW → ]';
+  const obtn=document.getElementById('pcardOpenBtn');
+  if(obtn) obtn.textContent=isDiplo?'[ DIPLOMACY → ]':isOwn?'[ MANAGE → ]':'[ VIEW → ]';
 
   // Show card, hide full panel if open
-  document.getElementById('infoPanel').classList.remove('open');
-  document.getElementById('provCard').classList.add('vis');
+  const ip=document.getElementById('infoPanel');
+  if(ip) ip.classList.remove('open');
+  const pc=document.getElementById('provCard');
+  if(pc) pc.classList.add('vis');
 }
 
 window.closeProvCard=function(){
@@ -998,10 +1017,10 @@ window.openInfoFromCard=function(){
 
 function openFullPanel(p){
   _ipProv=p;
-  const oid=ownership[p.id], owner=oid?nations[oid]:null;
-  const isOwn=mn&&oid===mn.id;
-  const isDiplo=!isOwn&&!!oid&&!!mn;
-  const isCap=mn&&mn.capital_id===p.id;
+  const oid=p?ownership[p.id]:null, owner=oid?nations[oid]:null;
+  const isOwn=p&&mn&&oid===mn.id;
+  const isDiplo=p&&!isOwn&&!!oid&&!!mn;
+  const isCap=p&&mn&&mn.capital_id===p.id;
 
   const panel=document.getElementById('infoPanel');
   const tabs=document.getElementById('infoPanelTabs');
@@ -1009,30 +1028,36 @@ function openFullPanel(p){
   const ipFlag=document.getElementById('ipFlag');
   const rpH=document.getElementById('rpH');
 
+  // Always hide provCard when opening full panel
+  const pc=document.getElementById('provCard');
+  if(pc) pc.classList.remove('vis');
+
   if(isDiplo){
     // ── DIPLOMACY mode — HOI4 style ─────────────────────
     tabs.style.display='none';
-    head.className='diplo';
-    if(owner?.flag_url){ipFlag.src=owner.flag_url;ipFlag.style.display='block';}
-    else ipFlag.style.display='none';
-    rpH.textContent=owner?owner.name.toUpperCase():'DIPLOMACY';
+    if(head) head.className='diplo';
+    if(owner?.flag_url&&ipFlag){ipFlag.src=owner.flag_url;ipFlag.style.display='block';}
+    else if(ipFlag) ipFlag.style.display='none';
+    if(rpH) rpH.textContent=owner?owner.name.toUpperCase():'DIPLOMACY';
     document.getElementById('rpB').innerHTML=buildDiploContent(p,owner,oid);
   } else if(isOwn){
     // ── OWN NATION mode — HOI4 Political style ──────────
-    head.className='';
-    if(mn.flag_url){ipFlag.src=mn.flag_url;ipFlag.style.display='block';}
-    else ipFlag.style.display='none';
-    rpH.innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+mn.name.toUpperCase();
+    if(head) head.className='';
+    if(mn.flag_url&&ipFlag){ipFlag.src=mn.flag_url;ipFlag.style.display='block';}
+    else if(ipFlag) ipFlag.style.display='none';
+    if(rpH) rpH.innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+mn.name.toUpperCase();
     tabs.style.display='flex';
-    _ipTab='pol'; // default to political when clicking own territory
-    document.getElementById('ipTabProv').classList.remove('active');
-    document.getElementById('ipTabPol').classList.add('active');
+    _ipTab='pol';
+    const tabProv=document.getElementById('ipTabProv');
+    const tabPol=document.getElementById('ipTabPol');
+    if(tabProv) tabProv.classList.remove('active');
+    if(tabPol) tabPol.classList.add('active');
     document.getElementById('rpB').innerHTML=buildPolContent();
-  } else {
+  } else if(p){
     // ── UNCLAIMED ────────────────────────────────────────
-    head.className='';
-    ipFlag.style.display='none';
-    rpH.innerHTML=p.name.toUpperCase();
+    if(head) head.className='';
+    if(ipFlag) ipFlag.style.display='none';
+    if(rpH) rpH.innerHTML=p.name.toUpperCase();
     tabs.style.display='none';
     document.getElementById('rpB').innerHTML=buildProvContent(p,owner,false,false,oid);
   }
@@ -1059,6 +1084,15 @@ window.ipSwitchTab=function(tab){
     document.getElementById('rpB').innerHTML=buildPolContent();
   }
 };
+
+// ── ACTION BUTTON HELPER ────────────────────────────────
+function btn(label,cls,onclick,disabled=false,title=''){
+  return '<button class="abtn '+cls+'"'
+    +(disabled?' disabled':'')
+    +(title?' title="'+title+'"':'')
+    +' onclick="'+onclick+'">'
+    +label+'</button>';
+}
 
 // ── PROVINCE CONTENT ─────────────────────────────────────
 function buildProvContent(p,owner,isOwn,isCap,oid){
@@ -1275,9 +1309,48 @@ function buildDiploContent(p,diplo,oid){
 // ── CLOSE ─────────────────────────────────────────────────
 window.closeInfoPanel=window.closeProvPanel=window.closeDiploPanel=function(){
   document.getElementById('infoPanel').classList.remove('open');
-  document.getElementById('provCard').classList.remove('vis');
+  const pc=document.getElementById('provCard');
+  if(pc) pc.classList.remove('vis');
   selProv=null; draw();
 };
+
+// ── PANEL TOGGLE (flag click / Q key) ────────────────────
+window.toggleNatPanel=function(){
+  if(!mn) return;
+  const panel=document.getElementById('infoPanel');
+  if(panel.classList.contains('open')){
+    panel.classList.remove('open');
+  } else {
+    // Open political panel for own nation
+    _ipProv=null;
+    const head=document.getElementById('infoPanelHead');
+    const tabs=document.getElementById('infoPanelTabs');
+    const ipFlag=document.getElementById('ipFlag');
+    const rpH=document.getElementById('rpH');
+    if(head) head.className='';
+    if(mn.flag_url&&ipFlag){ipFlag.src=mn.flag_url;ipFlag.style.display='block';}
+    else if(ipFlag) ipFlag.style.display='none';
+    if(rpH) rpH.textContent=mn.name.toUpperCase();
+    if(tabs) tabs.style.display='flex';
+    _ipTab='pol';
+    const tabProv=document.getElementById('ipTabProv');
+    const tabPol=document.getElementById('ipTabPol');
+    if(tabProv) tabProv.classList.remove('active');
+    if(tabPol) tabPol.classList.add('active');
+    const rpB=document.getElementById('rpB');
+    if(rpB) rpB.innerHTML=buildPolContent();
+    panel.classList.add('open');
+  }
+};
+
+// Q key shortcut
+window.addEventListener('keydown',e=>{
+  if(e.key==='q'||e.key==='Q'){
+    // Don't fire if typing in input
+    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+    toggleNatPanel();
+  }
+});
 
 
 // ── GOV MODAL ──────────────────────────────────────────────
