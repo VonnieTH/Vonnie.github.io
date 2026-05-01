@@ -933,7 +933,70 @@ function isAdj(pid){
 // ── Current tab state ────────────────────────────────────
 let _ipTab='prov', _ipProv=null;
 
-function showPanel(p){
+// ── PROVINCE CARD (bottom-left quick info) ───────────────
+function showProvCard(p){
+  const oid=ownership[p.id], owner=oid?nations[oid]:null;
+  const _pp=getProvPeople(p.id);
+  const _ppop=getProvPopEst(p.id);
+
+  // Flag
+  const fw=document.getElementById('pcardFlagWrap');
+  const ph=document.getElementById('pcardFlagPh');
+  if(owner?.flag_url){
+    fw.innerHTML='<img class="pcard-flag" src="'+owner.flag_url+'" alt="" style="object-fit:contain;max-height:56px;">';
+  } else {
+    ph.textContent=oid?'🏳':'🗺'; fw.innerHTML=''; fw.appendChild(ph);
+  }
+  // Province name & info
+  document.getElementById('pcardProvName').textContent=p.name;
+  document.getElementById('pcardNationName').textContent=owner?owner.name:'Unclaimed territory';
+  document.getElementById('pcardNationName').style.color=owner?'#f0c040':'rgba(200,232,255,.3)';
+  document.getElementById('pcardTerrain').textContent=p.terrain[0].toUpperCase()+p.terrain.slice(1)+' · ~'+_ppop+'k pop';
+  // Owner badge
+  const badge=document.getElementById('pcardOwnerBadge');
+  if(mn&&oid===mn.id){badge.textContent='★ YOUR TERRITORY';badge.style.color='rgba(240,192,64,.7)';badge.style.borderColor='rgba(240,192,64,.25)';}
+  else if(oid){badge.textContent='FOREIGN TERRITORY';badge.style.color='rgba(155,109,255,.7)';badge.style.borderColor='rgba(155,109,255,.2)';}
+  else{badge.textContent='UNCLAIMED';badge.style.color='rgba(200,232,255,.25)';badge.style.borderColor='rgba(200,232,255,.1)';}
+  // Leader portrait
+  const pw=document.getElementById('pcardPortraitWrap');
+  const pi=document.getElementById('pcardPortrait');
+  if(owner?.leader_url){pi.src=owner.leader_url;pw.style.display='';}
+  else pw.style.display='none';
+  // Stats
+  document.getElementById('pcardGold').textContent='+'+p.gold;
+  document.getElementById('pcardMP').textContent='+'+p.manpower;
+  document.getElementById('pcardSup').textContent='+'+p.supply;
+  // People
+  const ppl=document.getElementById('pcardPeople');
+  let pplText='<span style="color:'+_pp.color+'">'+_pp.name+' peoples</span>';
+  if(owner){
+    const groups=owner.ethnic_groups||(owner.ethnic_group?[owner.ethnic_group]:[]);
+    if(groups.length) pplText+=' · <span style="color:#9b6dff">'+groups.join(', ')+'</span>';
+  }
+  ppl.innerHTML=pplText;
+  // Open btn label
+  const isOwn=mn&&oid===mn.id;
+  const isDiplo=!isOwn&&oid&&mn;
+  document.getElementById('pcardOpenBtn').textContent=isDiplo?'[ DIPLOMACY → ]':isOwn?'[ MANAGE → ]':'[ VIEW → ]';
+
+  // Show card, hide full panel if open
+  document.getElementById('infoPanel').classList.remove('open');
+  document.getElementById('provCard').classList.add('vis');
+}
+
+window.closeProvCard=function(){
+  document.getElementById('provCard').classList.remove('vis');
+  selProv=null; draw();
+};
+
+window.openInfoFromCard=function(){
+  if(!_ipProv&&!selProv) return;
+  const p=_ipProv||selProv;
+  document.getElementById('provCard').classList.remove('vis');
+  openFullPanel(p);
+};
+
+function openFullPanel(p){
   _ipProv=p;
   const oid=ownership[p.id], owner=oid?nations[oid]:null;
   const isOwn=mn&&oid===mn.id;
@@ -947,30 +1010,39 @@ function showPanel(p){
   const rpH=document.getElementById('rpH');
 
   if(isDiplo){
-    // ── DIPLOMACY mode ──────────────────────────────────
+    // ── DIPLOMACY mode — HOI4 style ─────────────────────
     tabs.style.display='none';
     head.className='diplo';
     if(owner?.flag_url){ipFlag.src=owner.flag_url;ipFlag.style.display='block';}
     else ipFlag.style.display='none';
-    rpH.textContent='DIPLOMACY';
+    rpH.textContent=owner?owner.name.toUpperCase():'DIPLOMACY';
     document.getElementById('rpB').innerHTML=buildDiploContent(p,owner,oid);
+  } else if(isOwn){
+    // ── OWN NATION mode — HOI4 Political style ──────────
+    head.className='';
+    if(mn.flag_url){ipFlag.src=mn.flag_url;ipFlag.style.display='block';}
+    else ipFlag.style.display='none';
+    rpH.innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+mn.name.toUpperCase();
+    tabs.style.display='flex';
+    _ipTab='pol'; // default to political when clicking own territory
+    document.getElementById('ipTabProv').classList.remove('active');
+    document.getElementById('ipTabPol').classList.add('active');
+    document.getElementById('rpB').innerHTML=buildPolContent();
   } else {
-    // ── OWN / UNCLAIMED mode ────────────────────────────
+    // ── UNCLAIMED ────────────────────────────────────────
     head.className='';
     ipFlag.style.display='none';
-    rpH.innerHTML=(isCap?'<span class="rph-cap">★ </span>':'')+p.name.toUpperCase();
-    if(isOwn){
-      tabs.style.display='flex';
-      _ipTab='prov';
-      document.getElementById('ipTabProv').classList.add('active');
-      document.getElementById('ipTabPol').classList.remove('active');
-    } else {
-      tabs.style.display='none';
-    }
-    document.getElementById('rpB').innerHTML=buildProvContent(p,owner,isOwn,isCap,oid);
+    rpH.innerHTML=p.name.toUpperCase();
+    tabs.style.display='none';
+    document.getElementById('rpB').innerHTML=buildProvContent(p,owner,false,false,oid);
   }
 
   panel.classList.add('open');
+}
+
+function showPanel(p){
+  _ipProv=p;
+  showProvCard(p);
 }
 
 // Switch between Province / Political tabs
@@ -1063,110 +1135,147 @@ function buildPolContent(){
   if(!mn) return '<div style="padding:16px;font-size:9px;color:rgba(200,232,255,.3);text-align:center">No nation</div>';
 
   const ps=mn.party_support||{};
-  const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]);
   const activeLaws=mn.active_laws||[];
-  const pending=mn.pending_laws||{};
-  const cabinet=mn.cabinet||{};
+  const govData=GOVS[mn.gov]||{};
+  const govColor=govData.color||'#888';
 
-  // Party support bars
-  let partySec='<div class="pol-section-hdr">PARTY SUPPORT</div>';
-  partySec+=sorted.map(([name,pct])=>{
-    const g=GOVS[name];const col=g?.color||'#888';const isCur=name===mn.gov;
-    return '<div style="padding:3px 8px">'
-      +'<div style="display:flex;justify-content:space-between;font-size:8px;margin-bottom:2px">'
-      +'<span style="color:'+(isCur?col:'rgba(200,232,255,.5)')+'">'+name+(isCur?' ★':'')+'</span>'
-      +'<span style="color:'+col+'">'+pct+'%</span></div>'
-      +'<div style="height:3px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">'
-      +'<div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:2px"></div>'
-      +'</div></div>';
-  }).join('');
+  // ── Leader / Ruler section (HOI4-style) ──
+  const portEl=mn.leader_url
+    ?'<img class="ip-pol-ruler-portrait" src="'+mn.leader_url+'" alt="">'
+    :'<div class="ip-pol-ruler-portrait-ph">👤</div>';
+  const govBadgeStyle='color:'+govColor+';border-color:'+govColor+'55;';
+  const rulerSec='<div class="ip-pol-section">'
+    +'<div class="ip-pol-sec-hdr">LEADERSHIP</div>'
+    +'<div class="ip-pol-ruler-row">'
+    +portEl
+    +'<div class="ip-pol-ruler-info">'
+    +(mn.ruler?'<div class="ip-pol-ruler-name">'+mn.ruler+'</div>':
+       '<div class="ip-pol-ruler-name" style="color:rgba(200,232,255,.3)">Unknown Ruler</div>')
+    +'<div class="ip-pol-ruler-title">'+mn.name+'</div>'
+    +'<div class="ip-pol-gov-badge" style="'+govBadgeStyle+'">'+mn.gov+'</div>'
+    +(mn.ethnic_groups?.length||mn.ethnic_group?'<div style="font-size:7px;color:#9b6dff;margin-top:4px">👥 '+(mn.ethnic_groups||[mn.ethnic_group]).join(' · ')+'</div>':'')
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">'
+    +'<button class="ip-pol-focus-btn" onclick="openPolModal()">📜 POLITICS</button>'
+    +'<button class="ip-pol-focus-btn" onclick="openGovModal()" style="font-size:7px;border-color:rgba(155,109,255,.3);color:#9b6dff;background:rgba(155,109,255,.06)">⚖ REFORM</button>'
+    +'</div>'
+    +'</div></div>';
 
-  // Active laws
-  let lawSec='<div class="pol-section-hdr">ACTIVE LAWS ('+(activeLaws.length)+'/4)</div>';
+  // ── National Focus stub ──
+  const focusSec='<div class="ip-pol-section">'
+    +'<div class="ip-pol-sec-hdr">NATIONAL FOCUS</div>'
+    +'<div class="ip-pol-focus-box">'
+    +'<div class="ip-pol-focus-box-lbl">NO FOCUS SELECTED</div>'
+    +'<button class="ip-pol-focus-box-btn" onclick="toast(\'National Focus — Phase 3\')">[ SELECT A NATIONAL FOCUS ]</button>'
+    +'</div></div>';
+
+  // ── National Spirits (active laws) ──
+  let spiritSec='<div class="ip-pol-section"><div class="ip-pol-sec-hdr">NATIONAL SPIRIT ('+(activeLaws.length)+'/4)</div>';
   if(activeLaws.length){
-    lawSec+=activeLaws.map(k=>{
+    const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff',Trade:'#40d4cc',Science:'#c0e0ff',Social:'#ffb347',Environment:'#7fff7f'};
+    spiritSec+='<div class="ip-pol-spirits">';
+    spiritSec+=activeLaws.map(k=>{
       const l=LAWS[k];if(!l)return'';
-      const catColor={Government:'#9b6dff','Public Health':'#40ff80',Freedom:'#5bc4ff',Taxation:'#f0c040',Economy:'#ff9540',Military:'#ff6b6b',Culture:'#ff6bff',Trade:'#40d4cc',Science:'#c0e0ff',Social:'#ffb347',Environment:'#7fff7f'}[l.cat]||'#aaa';
-      return '<div style="padding:4px 8px 4px 10px;border-left:2px solid '+catColor+'40;margin:2px 8px;background:rgba(0,0,0,.2)">'
-        +'<div style="font-size:9px;color:'+catColor+'">'+l.name+'</div>'
-        +'<div style="font-size:7px;color:rgba(200,232,255,.3);margin-top:1px">'+l.cat+'</div>'
-        +'</div>';
+      const col=catColor[l.cat]||'#aaa';
+      return '<span class="ip-pol-spirit" style="border-color:'+col+'40;color:'+col+'">'+l.name+'</span>';
     }).join('');
-  } else lawSec+='<div style="padding:4px 8px;font-size:8px;color:rgba(200,232,255,.25)">No laws enacted</div>';
-
-  // Pending laws
-  let pendSec='';
-  const pendKeys=Object.keys(pending);
-  if(pendKeys.length){
-    pendSec='<div class="pol-section-hdr">PENDING LAWS</div>';
-    pendSec+=pendKeys.map(k=>{
-      const l=LAWS[k];if(!l)return'';
-      return '<div style="padding:3px 8px;font-size:8px;color:rgba(240,192,64,.5)">⏳ '+l.name+'</div>';
-    }).join('');
+    spiritSec+='</div>';
+  } else {
+    spiritSec+='<div style="padding:5px 10px 8px;font-size:8px;color:rgba(200,232,255,.2)">No active laws / spirits</div>';
   }
+  spiritSec+='</div>';
 
-  // Open full politics button
-  const openBtn='<div style="padding:8px 8px 10px">'
-    +btn('📜 Open Full Politics','warn','openPolModal()')
+  // ── Ideology / Party support ──
+  const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  let ideologySec='<div class="ip-pol-section"><div class="ip-pol-sec-hdr">PARTY SUPPORT</div>';
+  ideologySec+=sorted.map(([name,pct])=>{
+    const g=GOVS[name];const col=g?.color||'#888';const isCur=name===mn.gov;
+    return '<div class="ip-pol-ideology-row">'
+      +'<div class="ip-pol-ideology-dot" style="background:'+col+';'+(isCur?'box-shadow:0 0 5px '+col+'60':'')+'"></div>'
+      +'<span class="ip-pol-ideology-name" style="color:'+(isCur?col:'rgba(200,232,255,.45)')+'">'
+      +name+(isCur?' ★':'')+'</span>'
+      +'<span class="ip-pol-ideology-pct" style="color:'+col+'">'+pct+'%</span>'
+      +'</div>'
+      +'<div class="ip-pol-party-bar"><div class="ip-pol-party-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
+  }).join('');
+  ideologySec+='</div>';
+
+  // ── Stability & quick stats ──
+  const stab=mn.stability||0;
+  const stabCol=stab>60?'#40ff80':stab>30?'#f0c040':'#ff6b6b';
+  const statsSec='<div class="ip-nation-stats" style="border-top:1px solid rgba(0,212,255,.06);border-bottom:1px solid rgba(0,212,255,.06);">'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="color:'+stabCol+'">'+stab+'%</div><div class="ip-ns-lbl">STABILITY</div></div>'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="color:#f0c040">'+Math.round(mn.gold||0)+'</div><div class="ip-ns-lbl">💰 GOLD</div></div>'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="color:#5bc4ff">'+Math.round(mn.manpower||0)+'</div><div class="ip-ns-lbl">⚔ MANPOWER</div></div>'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="color:#40d4cc">'+Math.round(mn.supply||0)+'</div><div class="ip-ns-lbl">⚙ SUPPLY</div></div>'
     +'</div>';
 
-  return '<div class="pol-tab-inner">'+partySec+lawSec+pendSec+'</div>'+openBtn;
+  return statsSec+rulerSec+focusSec+spiritSec+ideologySec;
 }
+
+
+
 
 // ── DIPLOMACY CONTENT ────────────────────────────────────
 function buildDiploContent(p,diplo,oid){
   if(!diplo) return '';
   const govColor=(GOVS[diplo.gov]?.color)||'#aaa';
   const territories=Object.values(ownership).filter(v=>v===oid).length;
+  const stab=diplo.stability||0;
+  const stabCol=stab>60?'#40ff80':stab>30?'#f0c040':'#ff6b6b';
 
   const flagEl=diplo.flag_url
-    ?'<img class="diplo-hero-flag" src="'+diplo.flag_url+'" alt="">'
-    :'<div class="diplo-hero-flag-ph">🏳</div>';
+    ?'<img class="ip-diplo-flag" src="'+diplo.flag_url+'" alt="">'
+    :'<div class="ip-diplo-flag-ph">\u{1F3F3}</div>';
   const portEl=diplo.leader_url
-    ?'<img class="diplo-hero-portrait" src="'+diplo.leader_url+'" alt="">':'';
+    ?'<div class="ip-diplo-portrait"><img src="'+diplo.leader_url+'" alt=""></div>'
+    :'<div class="ip-diplo-portrait"><div class="ip-diplo-portrait-ph">\u{1F464}</div></div>';
+  const groups=diplo.ethnic_groups||(diplo.ethnic_group?[diplo.ethnic_group]:[]);
 
-  const hero='<div class="diplo-hero">'+flagEl
-    +'<div class="diplo-hero-info">'
-    +'<div class="diplo-hero-name">'+diplo.name+'</div>'
-    +'<div class="diplo-hero-gov" style="color:'+govColor+'">'+diplo.gov+'</div>'
-    +(diplo.ruler?'<div class="diplo-hero-ruler">'+portEl+'<span class="diplo-ruler-name">'+diplo.ruler+'</span></div>':'')
-    +'</div></div>';
+  const hero='<div class="ip-diplo-hero">'
+    +'<div class="ip-diplo-flag-wrap">'+flagEl+'</div>'
+    +'<div class="ip-diplo-info">'
+    +'<div class="ip-diplo-name">'+diplo.name+'</div>'
+    +'<div class="ip-diplo-gov" style="color:'+govColor+'">'+diplo.gov+'</div>'
+    +(diplo.ruler?'<div class="ip-diplo-ruler" style="font-size:9px;color:#f0c040">'+diplo.ruler+'</div>':'')
+    +(groups.length?'<div style="font-size:7px;color:#9b6dff;margin-top:3px">\u{1F465} '+groups.join(' \u00B7 ')+'</div>':'')
+    +'<div class="ip-diplo-relation">FOREIGN POWER</div>'
+    +'</div>'
+    +portEl
+    +'</div>';
 
-  const stats='<div class="diplo-stats-grid">'
-    +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">STABILITY</div>'
-    +'<div class="diplo-stat-val '+(diplo.stability>60?'iv gr':diplo.stability>30?'iv':'iv rd')+'">'+diplo.stability+'%</div></div>'
-    +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">TERRITORIES</div><div class="diplo-stat-val">'+territories+'</div></div>'
-    +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">PROVINCE</div><div class="diplo-stat-val" style="font-size:8px">'+p.name+'</div></div>'
-    +'<div class="diplo-stat-cell"><div class="diplo-stat-lbl">TERRAIN</div><div class="diplo-stat-val" style="font-size:9px">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)+'</div></div>'
+  const stats='<div class="ip-nation-stats">'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="color:'+stabCol+'">'+stab+'%</div><div class="ip-ns-lbl">STABILITY</div></div>'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val">'+territories+'</div><div class="ip-ns-lbl">TERRITORY</div></div>'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="font-size:8px">'+p.name.slice(0,8)+'</div><div class="ip-ns-lbl">PROVINCE</div></div>'
+    +'<div class="ip-nation-stat"><div class="ip-ns-val" style="font-size:8px">'+p.terrain[0].toUpperCase()+p.terrain.slice(1)+'</div><div class="ip-ns-lbl">TERRAIN</div></div>'
     +'</div>';
 
   function dBtn(icon,label,phase,cls=''){
-    const msg=label+' — Phase '+phase;
-    return '<button class="diplo-act-btn '+cls+'" onclick="toast(\''+msg+'\')">'
-      +'<span class="diplo-act-icon">'+icon+'</span>'
-      +'<span class="diplo-act-label">'+label+'</span>'
-      +'<span class="diplo-act-phase">Ph.'+phase+'</span>'
+    return '<button class="ip-diplo-act-btn '+cls+'" onclick="toast(\''+label+' \u2014 Phase '+phase+'\')">'
+      +'<span>'+icon+'</span><span>'+label+'</span>'
       +'</button>';
   }
 
-  const actions='<div class="diplo-act-list">'
-    +'<div class="diplo-act-head">DIPLOMATIC ACTIONS</div>'
-    +dBtn('✉','Send a Note',3)
-    +dBtn('🤝','Offer Trade Deal',3)
-    +dBtn('🛡','Offer Defensive Pact',3)
-    +dBtn('📜','Non-Aggression Pact',3)
-    +dBtn('🔗','Request Alliance',3)
-    +dBtn('💬','Send Envoy',3)
-    +'<div style="height:1px;background:rgba(255,107,107,.1);margin:5px 0"></div>'
-    +dBtn('⚔','Declare War',4,'dng')
-    +'</div>';
+  const actions='<div class="ip-diplo-actions">'
+    +'<div class="ip-diplo-act-hdr">DIPLOMATIC ACTIONS</div>'
+    +'<div class="ip-diplo-act-grid">'
+    +dBtn('\u2709','Send Note',3)
+    +dBtn('\u{1F91D}','Trade Deal',3)
+    +dBtn('\u{1F6E1}','Def. Pact',3)
+    +dBtn('\u{1F4DC}','Non-Aggression',3)
+    +dBtn('\u{1F517}','Alliance',3)
+    +dBtn('\u{1F4AC}','Send Envoy',3)
+    +dBtn('\u{1F4E6}','Request Resources',3)
+    +dBtn('\u2694','Declare War',4,'dng')
+    +'</div></div>';
 
   return hero+stats+actions;
 }
-
 // ── CLOSE ─────────────────────────────────────────────────
 window.closeInfoPanel=window.closeProvPanel=window.closeDiploPanel=function(){
   document.getElementById('infoPanel').classList.remove('open');
+  document.getElementById('provCard').classList.remove('vis');
   selProv=null; draw();
 };
 

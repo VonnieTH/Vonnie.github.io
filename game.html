@@ -210,6 +210,32 @@
     <!-- Content -->
     <div id="rpB"></div>
   </div>
+
+  <!-- Province Card: bottom-left quick info (shows when province clicked) -->
+  <div id="provCard">
+    <div class="pcard-banner">
+      <div class="pcard-flag-wrap" id="pcardFlagWrap"><div class="pcard-flag-ph" id="pcardFlagPh">🗺</div></div>
+      <div class="pcard-name-block">
+        <div class="pcard-prov-name" id="pcardProvName">—</div>
+        <div class="pcard-nation-name" id="pcardNationName"></div>
+        <div class="pcard-terrain" id="pcardTerrain"></div>
+        <div class="pcard-owner-badge" id="pcardOwnerBadge"></div>
+      </div>
+      <div class="pcard-portrait" id="pcardPortraitWrap" style="display:none">
+        <img id="pcardPortrait" src="" alt="" style="width:40px;height:56px;object-fit:cover;object-position:top;">
+      </div>
+    </div>
+    <div class="pcard-stats">
+      <div class="pcard-stat"><div class="pcard-stat-val" id="pcardGold">—</div><div class="pcard-stat-lbl">💰 GOLD</div></div>
+      <div class="pcard-stat"><div class="pcard-stat-val" id="pcardMP">—</div><div class="pcard-stat-lbl">⚔ MANPOWER</div></div>
+      <div class="pcard-stat"><div class="pcard-stat-val" id="pcardSup">—</div><div class="pcard-stat-lbl">⚙ SUPPLY</div></div>
+    </div>
+    <div class="pcard-people" id="pcardPeople"></div>
+    <div class="pcard-footer">
+      <button class="pcard-close" onclick="closeProvCard()">[ CLOSE ]</button>
+      <button class="pcard-open-btn" id="pcardOpenBtn" onclick="openInfoFromCard()">[ VIEW DETAILS → ]</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
