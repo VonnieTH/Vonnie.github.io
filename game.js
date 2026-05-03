@@ -1181,20 +1181,6 @@ window.closeInfoPanel=window.closeProvCard=window.closeDiploPanel=window.closePr
 
 window.openInfoFromCard=function(){ /* no-op — no separate card */ };
 
-window.toggleNatPanel=function(){
-  if(!mn) return;
-  // Toggle political / province tab
-  sbSwitchTab(0);
-};
-
-window.addEventListener('keydown',e=>{
-  if(e.key==='q'||e.key==='Q'){
-    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
-    if(mn){sbSwitchTab(0);}
-  }
-});
-
-
 // ── GOV MODAL ──────────────────────────────────────────────
 window.openGovModal=function(){
   if(!mn)return;
@@ -1345,10 +1331,21 @@ window.toggleSbDesktop=function(){};
 // Toggle political panel via flag click or Q key
 window.toggleNatPanel=function(){
   if(!mn) return;
-  // Scroll sidebar to party section smoothly
+  const sbEl=document.getElementById('sb');
+  const ov=document.getElementById('sbOverlay');
+  // On mobile: open sidebar if not open
+  if(window.innerWidth<=768){
+    if(!sbEl.classList.contains('open')){
+      sbEl.classList.add('open');
+      if(ov) ov.style.display='block';
+    }
+  }
+  // Switch to political tab (tab 0) and scroll to party section
+  sbSwitchTab(0);
   const psec=document.getElementById('partySection');
-  const sb=document.getElementById('sb');
-  if(psec&&sb) sb.scrollTo({top:psec.offsetTop,behavior:'smooth'});
+  if(psec&&sbEl){
+    setTimeout(()=>sbEl.scrollTo({top:psec.offsetTop-10,behavior:'smooth'}),50);
+  }
 };
 
 window.addEventListener('keydown',e=>{
@@ -1399,6 +1396,18 @@ window.toast=function(m){const t=document.getElementById('toast');t.textContent=
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_group_set_at TIMESTAMPTZ DEFAULT NULL;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_groups JSONB DEFAULT '[]'::jsonb;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS migrant_pop INTEGER DEFAULT 0;
+
+// ── GOVERNMENT CHANGE BONUS DISPLAY ────────────────────────
+window.onGC=function(){
+  const sel=document.getElementById('sG');
+  const gB=document.getElementById('gB');
+  if(!sel||!gB) return;
+  const gov=GOVS[sel.value];
+  if(gov){
+    gB.textContent=gov.bonus;
+    gB.style.color=gov.color||'#c8e8ff';
+  }
+};
 
 // ── INIT ───────────────────────────────────────────────────
 (async function(){
