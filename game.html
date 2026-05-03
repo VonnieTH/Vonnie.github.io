@@ -123,7 +123,20 @@
     <div id="sbEditRow" style="display:none"></div>
     <div id="sbNationHeader" style="display:none"></div>
     <div id="sbNoNatHeader" style="display:none"></div>
-    <div id="partySection" style="display:none"><div id="partyBars"></div></div>
+    <!-- Party support — HOI4 style: ideology img | pie | list -->
+    <div class="party-section" id="partySection" style="display:none">
+      <div class="party-title">PARTY SUPPORT</div>
+      <div class="party-hoi-wrap">
+        <div class="party-img-wrap">
+          <img id="ideologyImg" src="ideology_beta.png" alt="" class="party-ideology-img">
+          <div class="party-ideology-name" id="ideologyLabelMain"></div>
+        </div>
+        <div class="party-pie-wrap">
+          <canvas id="partyPieCanvas" width="90" height="90"></canvas>
+        </div>
+        <div class="party-list-wrap" id="partyBars"></div>
+      </div>
+    </div>
     <div id="myPS" style="display:none"><div id="myPL"></div></div>
 
     <!-- ── STATE: No Nation ───────────────── -->
@@ -299,6 +312,11 @@
 
   <div id="ma">
     <div id="tb">
+      <!-- HOI4-style nation flag — left of topbar, click = toggle political panel -->
+      <div id="tbFlagArea" onclick="toggleNatPanel()" title="[Q] Political Panel">
+        <img id="tbFlagImg" src="" alt="">
+        <div id="tbFlagPh">🏳</div>
+      </div>
       <div class="tbd"></div>
       <span>WORLD MAP</span><span class="tbs">|</span>
       <span>PROVINCES <span class="tbv" id="tbP">490</span></span><span class="tbs">|</span>
@@ -313,8 +331,6 @@
       </span>
     </div>
     <button id="mobSbBtn" onclick="toggleSb()">☰</button>
-    <!-- Desktop sidebar toggle on left edge of map -->
-    <button id="sbToggleBtn" onclick="toggleSbDesktop()" title="Toggle sidebar" style="position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:110;background:rgba(8,8,20,.9);border:1px solid rgba(0,212,255,.25);border-left:none;color:#00d4ff;font-size:10px;padding:10px 4px;cursor:pointer;writing-mode:vertical-lr;letter-spacing:.1em;display:none">◀ INFO</button>
     <button id="mobRpBtn" onclick="toggleRp()" style="position:absolute;right:0;top:40px;z-index:200;background:rgba(8,8,20,.9);border:1px solid rgba(0,212,255,.25);color:#00d4ff;font-size:11px;padding:4px 6px;cursor:pointer;display:none">☰</button>
     <canvas id="mc"></canvas>
     <img id="mi" src="FPE_Map.png" crossorigin="anonymous">
@@ -389,7 +405,6 @@
 </div>
 
 <!-- SIDEBAR TOGGLE (desktop) -->
-<button id="sbTogBtn" onclick="toggleSbDesktop()" title="Toggle info panel">▶ INFO</button>
 
 <!-- POLITICS MODAL -->
 <div id="polModal">

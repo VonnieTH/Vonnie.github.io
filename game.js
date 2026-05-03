@@ -792,7 +792,7 @@ async function uploadAsset(file,path){
 
 function updateFlagLeader(){
   if(!mn) return;
-  // Flag banner
+  // Sidebar flag banner
   const fb=document.getElementById('sbFlagBanner'),fi=document.getElementById('sbFlagImg');
   if(fb&&fi){if(mn.flag_url){fi.src=mn.flag_url;fb.style.display='';}else fb.style.display='none';}
   // Leader portrait
@@ -802,6 +802,89 @@ function updateFlagLeader(){
       ?'<img src="'+mn.leader_url+'" alt="" style="width:64px;height:80px;object-fit:cover;object-position:top;display:block;">'
       :'👤';
   }
+  // Topbar flag (HOI4-style)
+  updateTopbarFlag();
+  // Party pie + compact list
+  updatePartySection();
+}
+
+function updateTopbarFlag(){
+  const area=document.getElementById('tbFlagArea');
+  const img=document.getElementById('tbFlagImg');
+  const ph=document.getElementById('tbFlagPh');
+  if(!area) return;
+  if(mn&&mn.flag_url){
+    area.classList.add('vis');
+    img.src=mn.flag_url; img.style.display='block';
+    if(ph) ph.style.display='none';
+  } else if(mn){
+    area.classList.add('vis');
+    img.style.display='none';
+    if(ph){ph.style.display='flex';ph.textContent='🏳';}
+  } else {
+    area.classList.remove('vis');
+  }
+}
+
+function updatePartySection(){
+  if(!mn) return;
+  const ps=mn.party_support||{};
+  const psec=document.getElementById('partySection');
+  const pbars=document.getElementById('partyBars');
+  if(!psec||!pbars||!Object.keys(ps).length) return;
+  psec.style.display='block';
+  const govData=GOVS[mn.gov]||{};
+  const govColor=govData.color||'#aaa';
+  // Ideology label
+  const lbl=document.getElementById('ideologyLabelMain');
+  if(lbl){lbl.textContent=mn.gov||'';lbl.style.color=govColor;}
+  // Compact party rows
+  const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  pbars.innerHTML=sorted.map(([name,pct])=>{
+    const g=GOVS[name];const col=g?g.color:'#888';const isCur=name===mn.gov;
+    return '<div class="party-row">'
+      +'<div class="party-dot" style="background:'+col+'"></div>'
+      +'<span class="party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';':'')+'">'+name+'</span>'
+      +'<span class="party-pct" style="color:'+col+'">'+pct+'</span>'
+      +'</div>'
+      +'<div class="party-bar"><div class="party-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
+  }).join('');
+  // Draw pie
+  drawPartyPie();
+}
+
+function drawPartyPie(){
+  const canvas=document.getElementById('partyPieCanvas');
+  if(!canvas||!mn) return;
+  const ps=mn.party_support||{};
+  const entries=Object.entries(ps).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=Math.min(W,H)/2-2;
+  ctx.clearRect(0,0,W,H);
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  let angle=-Math.PI/2;
+  entries.forEach(([name,pct])=>{
+    const g=GOVS[name];const col=g?.color||'#888';
+    const isCur=name===mn.gov;
+    const sweep=(pct/total)*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,isCur?R:R-1,angle,angle+sweep);
+    ctx.closePath();
+    ctx.fillStyle=col+(isCur?'ee':'99');
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=0.8;ctx.stroke();
+    if(isCur){
+      ctx.beginPath();ctx.arc(cx,cy,R,angle,angle+sweep);
+      ctx.strokeStyle=col;ctx.lineWidth=1.8;ctx.stroke();
+    }
+    angle+=sweep;
+  });
+  // Center dot
+  ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);
+  ctx.fillStyle='#0d0f18';ctx.fill();
+  ctx.strokeStyle=GOVS[mn.gov]?.color||'#888';ctx.lineWidth=1.5;ctx.stroke();
 }
 
 function updateNatUI(){
@@ -1256,19 +1339,24 @@ window.ownerGov=async function(){
 
 // ── MOBILE SIDEBAR ─────────────────────────────────────────
 
-// ── DESKTOP SIDEBAR TOGGLE ─────────────────────────────────
-window.toggleSbDesktop=function(){
-  const sb=document.getElementById('sb'),btn=document.getElementById('sbTogBtn');
-  if(sb.classList.contains('collapsed')){
-    sb.classList.remove('collapsed');
-    sb.classList.add('pinned');
-    btn.textContent='◀ INFO';
-  } else {
-    sb.classList.add('collapsed');
-    sb.classList.remove('pinned');
-    btn.textContent='▶ INFO';
-  }
+// ── DESKTOP SIDEBAR TOGGLE — now no-op (use flag or Q) ─────
+window.toggleSbDesktop=function(){};
+
+// Toggle political panel via flag click or Q key
+window.toggleNatPanel=function(){
+  if(!mn) return;
+  // Scroll sidebar to party section smoothly
+  const psec=document.getElementById('partySection');
+  const sb=document.getElementById('sb');
+  if(psec&&sb) sb.scrollTo({top:psec.offsetTop,behavior:'smooth'});
 };
+
+window.addEventListener('keydown',e=>{
+  if(e.key==='q'||e.key==='Q'){
+    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+    toggleNatPanel();
+  }
+});
 
 window.toggleSb=function(){
   const sb=document.getElementById('sb'),ov=document.getElementById('sbOverlay');
@@ -1283,16 +1371,13 @@ function closePanels(){
 };
 function setupMobile(){
   const mb=document.getElementById('mobSbBtn');
-  const mrb=document.getElementById('mobRpBtn'); // may not exist
-  const stb=document.getElementById('sbTogBtn');
+  const mrb=document.getElementById('mobRpBtn');
   if(window.innerWidth<=768){
     if(mb)mb.style.display='block';
     if(mrb)mrb.style.display='block';
-    if(stb)stb.style.display='none';
   } else {
     if(mb)mb.style.display='none';
     if(mrb)mrb.style.display='none';
-    if(stb)stb.style.display='block';
     document.getElementById('sb').classList.remove('open');
     const rp=document.getElementById('rp');if(rp)rp.classList.remove('open');
     document.getElementById('sbOverlay').style.display='none';

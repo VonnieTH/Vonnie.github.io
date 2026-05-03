@@ -183,7 +183,15 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .abtn.dng{border-color:rgba(255,107,107,.3);color:#ff6b6b;}.abtn.dng:hover{background:rgba(255,107,107,.08);}
 .abtn:disabled{opacity:.35;cursor:not-allowed;}
 /* TOPBAR */
-#tb{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(8,8,20,.95);border-bottom:1px solid rgba(0,212,255,.12);display:flex;align-items:center;padding:0 8px;gap:8px;z-index:100;font-size:8px;color:rgba(200,232,255,.4);letter-spacing:.1em;}
+#tb{position:absolute;top:0;left:0;right:0;height:32px;background:rgba(8,8,20,.95);border-bottom:1px solid rgba(0,212,255,.12);display:flex;align-items:stretch;padding:0;padding-right:8px;gap:0;z-index:100;font-size:8px;color:rgba(200,232,255,.4);letter-spacing:.1em;}
+#tb>span{display:flex;align-items:center;padding:0 4px;}
+/* HOI4 flag in topbar */
+#tbFlagArea{display:none;align-items:stretch;width:44px;flex-shrink:0;border-right:1px solid rgba(180,160,100,.2);cursor:pointer;overflow:hidden;background:#0a0c14;transition:filter .15s;}
+#tbFlagArea.vis{display:flex;}
+#tbFlagArea:hover{filter:brightness(1.2);}
+#tbFlagImg{width:44px;height:100%;object-fit:cover;object-position:center;display:block;}
+#tbFlagPh{width:44px;height:100%;display:flex;align-items:center;justify-content:center;font-size:18px;display:none;}
+.tbd{width:8px;flex-shrink:0;}
 .tbd{width:5px;height:5px;border-radius:50%;background:#40ff80;box-shadow:0 0 4px #40ff80;flex-shrink:0;}
 .tbv{color:#00d4ff;}.tbs{color:rgba(0,212,255,.2);margin:0 1px;}
 .tbl{color:rgba(0,212,255,.4);text-decoration:none;letter-spacing:.1em;transition:color .15s;}.tbl:hover{color:#00d4ff;}
@@ -319,13 +327,21 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 #leg{display:none;}
 
 /* PARTY BARS */
-.party-section{padding:8px 10px;border-top:1px solid rgba(0,212,255,.08);}
-.party-title{font-size:8px;color:rgba(200,232,255,.35);letter-spacing:.14em;margin-bottom:6px;}
-.party-row{margin-bottom:5px;}
-.party-name{display:flex;justify-content:space-between;font-size:8px;color:rgba(200,232,255,.45);margin-bottom:2px;}
-.party-pct{color:#f0c040;}
-.party-track{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
-.party-fill{height:100%;border-radius:2px;transition:width .6s ease;}
+.party-section{padding:6px 8px 8px;border-top:1px solid rgba(0,212,255,.08);}
+.party-title{font-size:7.5px;color:rgba(200,232,255,.3);letter-spacing:.16em;margin-bottom:5px;}
+.party-hoi-wrap{display:flex;align-items:center;gap:6px;}
+.party-img-wrap{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;}
+.party-ideology-img{width:46px;height:46px;object-fit:contain;border:1px solid rgba(180,160,100,.2);background:rgba(0,0,0,.3);padding:2px;}
+.party-ideology-name{font-size:6px;color:rgba(200,185,140,.4);letter-spacing:.05em;text-align:center;max-width:50px;line-height:1.3;margin-top:2px;}
+.party-pie-wrap{flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.party-list-wrap{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;}
+.party-row{display:flex;align-items:center;gap:4px;padding:1px 0;}
+.party-dot{width:7px;height:7px;border-radius:1px;flex-shrink:0;}
+.party-name{font-size:7px;color:rgba(200,185,140,.45);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.party-name.cur{color:#dcc87c;}
+.party-pct{font-size:7px;min-width:20px;text-align:right;}
+.party-bar{height:2px;background:rgba(255,255,255,.05);margin:0 0 1px 11px;border-radius:1px;overflow:hidden;}
+.party-bar-fill{height:100%;border-radius:1px;}
 
 /* LEADER CARD (hidden — replaced by sb-nation-header) */
 .leader-card{display:none !important;}
