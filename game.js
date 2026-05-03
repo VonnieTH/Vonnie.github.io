@@ -722,10 +722,9 @@ function updateTickDisplay(){
 // ── NATION SETUP ───────────────────────────────────────────
 function checkMyNation(){
   const mine=Object.values(nations).find(n=>n.owner_id===cu?.id);
-  // Sidebar starts collapsed on desktop — opens when clicking own nation
+  // Sidebar always visible on desktop
   if(window.innerWidth>768){
-    const sb=document.getElementById('sb');
-    if(!sb.classList.contains('pinned'))sb.classList.add('collapsed');
+    document.getElementById('sb').classList.remove('collapsed');
   }
   if(mine){
     mn=mine;natColors[mine.id]=hexRgb(mine.color||'#f0c040');
@@ -1333,12 +1332,15 @@ window.toggleNatPanel=function(){
   if(!mn) return;
   const sbEl=document.getElementById('sb');
   const ov=document.getElementById('sbOverlay');
-  // On mobile: open sidebar if not open
   if(window.innerWidth<=768){
+    // Mobile: open sidebar slide-in
     if(!sbEl.classList.contains('open')){
       sbEl.classList.add('open');
       if(ov) ov.style.display='block';
     }
+  } else {
+    // Desktop: remove collapsed if hidden
+    sbEl.classList.remove('collapsed');
   }
   // Switch to political tab (tab 0) and scroll to party section
   sbSwitchTab(0);
@@ -1357,9 +1359,14 @@ window.addEventListener('keydown',e=>{
 
 window.toggleSb=function(){
   const sb=document.getElementById('sb'),ov=document.getElementById('sbOverlay');
-  const wasOpen=sb.classList.contains('open');
-  closePanels();
-  if(!wasOpen){sb.classList.add('open');ov.style.display='block';}
+  if(window.innerWidth<=768){
+    const wasOpen=sb.classList.contains('open');
+    closePanels();
+    if(!wasOpen){sb.classList.add('open');ov.style.display='block';}
+  } else {
+    // Desktop: toggle collapsed
+    sb.classList.toggle('collapsed');
+  }
 };
 window.toggleRp=function(){/* right panel removed */};
 function closePanels(){
@@ -1375,7 +1382,9 @@ function setupMobile(){
   } else {
     if(mb)mb.style.display='none';
     if(mrb)mrb.style.display='none';
+    // Desktop: remove mobile-open class, keep sidebar visible (not collapsed)
     document.getElementById('sb').classList.remove('open');
+    document.getElementById('sb').classList.remove('collapsed');
     const rp=document.getElementById('rp');if(rp)rp.classList.remove('open');
     document.getElementById('sbOverlay').style.display='none';
   }
