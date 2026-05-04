@@ -722,11 +722,6 @@ function updateTickDisplay(){
 // ── NATION SETUP ───────────────────────────────────────────
 function checkMyNation(){
   const mine=Object.values(nations).find(n=>n.owner_id===cu?.id);
-  // Sidebar starts collapsed on desktop — opens when clicking own nation
-  if(window.innerWidth>768){
-    const sb=document.getElementById('sb');
-    if(!sb.classList.contains('pinned'))sb.classList.add('collapsed');
-  }
   if(mine){
     mn=mine;natColors[mine.id]=hexRgb(mine.color||'#f0c040');
     applyOfflineTick(mine).then(updated=>{
@@ -1399,18 +1394,6 @@ window.toast=function(m){const t=document.getElementById('toast');t.textContent=
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_group_set_at TIMESTAMPTZ DEFAULT NULL;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_groups JSONB DEFAULT '[]'::jsonb;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS migrant_pop INTEGER DEFAULT 0;
-
-// ── GOV SELECT BONUS PREVIEW ───────────────────────────────
-window.onGC=function(){
-  const g=document.getElementById('sG').value;
-  const gb=document.getElementById('gB');
-  if(!gb) return;
-  gb.textContent=(GOVS[g]?.bonus)||'';
-  const col=GOVS[g]?.color||'#888';
-  const rgb=hexRgb(col);
-  gb.style.borderColor='rgba('+rgb.join(',')+', .3)';
-  gb.style.color=col;
-};
 
 // ── INIT ───────────────────────────────────────────────────
 (async function(){

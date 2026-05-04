@@ -317,11 +317,7 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 
 /* SIDEBAR COLLAPSED/PINNED (desktop) */
 #sb{transition:width .25s ease,transform .25s ease;}
-#sb.collapsed{width:0;overflow:hidden;border-right:none;}
-#sb.collapsed *{visibility:hidden;}
 /* Toggle button on left edge */
-#sbToggleBtn{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:110;background:rgba(8,8,20,.9);border:1px solid rgba(0,212,255,.25);border-left:none;color:#00d4ff;font-size:10px;padding:8px 4px;cursor:pointer;letter-spacing:.1em;writing-mode:vertical-lr;transition:left .25s;}
-#sb.collapsed~#ma>#sbToggleBtn,#sb:not(.collapsed)~#ma>#sbToggleBtn{display:none;}
 
 /* LEGEND hidden */
 #leg{display:none;}
@@ -364,9 +360,7 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .fle-submit:disabled{opacity:.4;cursor:not-allowed;}
 
 /* SIDEBAR COLLAPSED — map fills full width */
-#sb.collapsed{width:0;min-width:0;overflow:hidden;border-right:none;}
 /* Desktop toggle button */
-#sbTogBtn{position:absolute;left:0;top:50%;transform:translateY(-50%);z-index:300;background:rgba(8,8,20,.9);border:1px solid rgba(0,212,255,.3);border-left:none;color:#00d4ff;font-size:9px;padding:10px 3px;cursor:pointer;writing-mode:vertical-lr;letter-spacing:.12em;display:none;transition:left .25s;}
 /* CAPITAL MARKER */
 .cap-star{color:#f0c040;text-shadow:0 0 6px rgba(240,192,64,.8);}
 /* POLITICIAN CARD */
