@@ -722,9 +722,10 @@ function updateTickDisplay(){
 // ── NATION SETUP ───────────────────────────────────────────
 function checkMyNation(){
   const mine=Object.values(nations).find(n=>n.owner_id===cu?.id);
-  // Sidebar always visible on desktop
+  // Sidebar starts collapsed on desktop — opens when clicking own nation
   if(window.innerWidth>768){
-    document.getElementById('sb').classList.remove('collapsed');
+    const sb=document.getElementById('sb');
+    if(!sb.classList.contains('pinned'))sb.classList.add('collapsed');
   }
   if(mine){
     mn=mine;natColors[mine.id]=hexRgb(mine.color||'#f0c040');
@@ -1180,6 +1181,20 @@ window.closeInfoPanel=window.closeProvCard=window.closeDiploPanel=window.closePr
 
 window.openInfoFromCard=function(){ /* no-op — no separate card */ };
 
+window.toggleNatPanel=function(){
+  if(!mn) return;
+  // Toggle political / province tab
+  sbSwitchTab(0);
+};
+
+window.addEventListener('keydown',e=>{
+  if(e.key==='q'||e.key==='Q'){
+    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+    if(mn){sbSwitchTab(0);}
+  }
+});
+
+
 // ── GOV MODAL ──────────────────────────────────────────────
 window.openGovModal=function(){
   if(!mn)return;
@@ -1330,24 +1345,10 @@ window.toggleSbDesktop=function(){};
 // Toggle political panel via flag click or Q key
 window.toggleNatPanel=function(){
   if(!mn) return;
-  const sbEl=document.getElementById('sb');
-  const ov=document.getElementById('sbOverlay');
-  if(window.innerWidth<=768){
-    // Mobile: open sidebar slide-in
-    if(!sbEl.classList.contains('open')){
-      sbEl.classList.add('open');
-      if(ov) ov.style.display='block';
-    }
-  } else {
-    // Desktop: remove collapsed if hidden
-    sbEl.classList.remove('collapsed');
-  }
-  // Switch to political tab (tab 0) and scroll to party section
-  sbSwitchTab(0);
+  // Scroll sidebar to party section smoothly
   const psec=document.getElementById('partySection');
-  if(psec&&sbEl){
-    setTimeout(()=>sbEl.scrollTo({top:psec.offsetTop-10,behavior:'smooth'}),50);
-  }
+  const sb=document.getElementById('sb');
+  if(psec&&sb) sb.scrollTo({top:psec.offsetTop,behavior:'smooth'});
 };
 
 window.addEventListener('keydown',e=>{
@@ -1359,14 +1360,9 @@ window.addEventListener('keydown',e=>{
 
 window.toggleSb=function(){
   const sb=document.getElementById('sb'),ov=document.getElementById('sbOverlay');
-  if(window.innerWidth<=768){
-    const wasOpen=sb.classList.contains('open');
-    closePanels();
-    if(!wasOpen){sb.classList.add('open');ov.style.display='block';}
-  } else {
-    // Desktop: toggle collapsed
-    sb.classList.toggle('collapsed');
-  }
+  const wasOpen=sb.classList.contains('open');
+  closePanels();
+  if(!wasOpen){sb.classList.add('open');ov.style.display='block';}
 };
 window.toggleRp=function(){/* right panel removed */};
 function closePanels(){
@@ -1382,9 +1378,7 @@ function setupMobile(){
   } else {
     if(mb)mb.style.display='none';
     if(mrb)mrb.style.display='none';
-    // Desktop: remove mobile-open class, keep sidebar visible (not collapsed)
     document.getElementById('sb').classList.remove('open');
-    document.getElementById('sb').classList.remove('collapsed');
     const rp=document.getElementById('rp');if(rp)rp.classList.remove('open');
     document.getElementById('sbOverlay').style.display='none';
   }
@@ -1405,18 +1399,6 @@ window.toast=function(m){const t=document.getElementById('toast');t.textContent=
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_group_set_at TIMESTAMPTZ DEFAULT NULL;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_groups JSONB DEFAULT '[]'::jsonb;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS migrant_pop INTEGER DEFAULT 0;
-
-// ── GOVERNMENT CHANGE BONUS DISPLAY ────────────────────────
-window.onGC=function(){
-  const sel=document.getElementById('sG');
-  const gB=document.getElementById('gB');
-  if(!sel||!gB) return;
-  const gov=GOVS[sel.value];
-  if(gov){
-    gB.textContent=gov.bonus;
-    gB.style.color=gov.color||'#c8e8ff';
-  }
-};
 
 // ── INIT ───────────────────────────────────────────────────
 (async function(){
