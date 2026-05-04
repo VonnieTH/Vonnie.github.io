@@ -825,62 +825,35 @@ function updatePartySection(){
   if(!mn) return;
   const ps=mn.party_support||{};
   const psec=document.getElementById('partySection');
-  const pbars=document.getElementById('partyBars');
-  if(!psec||!pbars||!Object.keys(ps).length) return;
-  psec.style.display='block';
+  if(!psec||!Object.keys(ps).length) return;
+  psec.style.display='';
+
   const govData=GOVS[mn.gov]||{};
   const govColor=govData.color||'#aaa';
-  // Ideology label
-  const lbl=document.getElementById('ideologyLabelMain');
-  if(lbl){lbl.textContent=mn.gov||'';lbl.style.color=govColor;}
-  // Compact party rows
+
+  // Ideology name + axis
+  const nameEl=document.getElementById('sbIdeologyName');
+  const axisEl=document.getElementById('sbIdeologyAxis');
+  if(nameEl){nameEl.textContent=mn.gov||'';nameEl.style.color=govColor;}
+  if(axisEl) axisEl.textContent=(govData.axis||'').toUpperCase();
+
+  // Party rows
+  const rowsEl=document.getElementById('sbPartyRows');
+  if(!rowsEl) return;
   const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  pbars.innerHTML=sorted.map(([name,pct])=>{
+  rowsEl.innerHTML=sorted.map(([name,pct])=>{
     const g=GOVS[name];const col=g?g.color:'#888';const isCur=name===mn.gov;
-    return '<div class="party-row">'
-      +'<div class="party-dot" style="background:'+col+'"></div>'
-      +'<span class="party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';':'')+'">'+name+'</span>'
-      +'<span class="party-pct" style="color:'+col+'">'+pct+'</span>'
+    return '<div class="sb-party-row">'
+      +'<div class="sb-party-dot" style="background:'+col+'"></div>'
+      +'<span class="sb-party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';':'')+'">'+name+'</span>'
+      +'<span class="sb-party-pct" style="color:'+col+'">'+pct+'</span>'
       +'</div>'
-      +'<div class="party-bar"><div class="party-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
+      +'<div class="sb-party-bar"><div class="sb-party-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
   }).join('');
-  // Draw pie
-  drawPartyPie();
 }
 
-function drawPartyPie(){
-  const canvas=document.getElementById('partyPieCanvas');
-  if(!canvas||!mn) return;
-  const ps=mn.party_support||{};
-  const entries=Object.entries(ps).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  if(!entries.length) return;
-  const ctx=canvas.getContext('2d');
-  const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2,R=Math.min(W,H)/2-2;
-  ctx.clearRect(0,0,W,H);
-  const total=entries.reduce((s,[,v])=>s+v,0);
-  let angle=-Math.PI/2;
-  entries.forEach(([name,pct])=>{
-    const g=GOVS[name];const col=g?.color||'#888';
-    const isCur=name===mn.gov;
-    const sweep=(pct/total)*Math.PI*2;
-    ctx.beginPath();
-    ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,isCur?R:R-1,angle,angle+sweep);
-    ctx.closePath();
-    ctx.fillStyle=col+(isCur?'ee':'99');
-    ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=0.8;ctx.stroke();
-    if(isCur){
-      ctx.beginPath();ctx.arc(cx,cy,R,angle,angle+sweep);
-      ctx.strokeStyle=col;ctx.lineWidth=1.8;ctx.stroke();
-    }
-    angle+=sweep;
-  });
-  // Center dot
-  ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);
-  ctx.fillStyle='#0d0f18';ctx.fill();
-  ctx.strokeStyle=GOVS[mn.gov]?.color||'#888';ctx.lineWidth=1.5;ctx.stroke();
-}
+function drawPartyPie(){ /* no-op — pie removed */ }
+
 
 function updateNatUI(){
   if(!mn) return;
@@ -970,23 +943,8 @@ function updateSbPolPanel(){
     }
   }
 
-  // Ideology + party support
-  if(g('sbIdeologyName')){g('sbIdeologyName').textContent=mn.gov||'';g('sbIdeologyName').style.color=govColor;}
-  if(g('sbIdeologyAxis')){g('sbIdeologyAxis').textContent=(govData.axis||'').toUpperCase();}
-  const partyRows=g('sbPartyRows');
-  if(partyRows){
-    const ps=mn.party_support||{};
-    const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,5);
-    partyRows.innerHTML=sorted.map(([name,pct])=>{
-      const gg=GOVS[name];const col=gg?.color||'#888';const isCur=name===mn.gov;
-      return '<div class="sb-party-row">'
-        +'<div class="sb-party-dot" style="background:'+col+'"></div>'
-        +'<span class="sb-party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col:'')+'">'+name+'</span>'
-        +'<span class="sb-party-pct" style="color:'+col+'">'+pct+'</span>'
-        +'</div>'
-        +'<div class="sb-party-bar"><div class="sb-party-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
-    }).join('');
-  }
+  // Party support — delegated to updatePartySection()
+  updatePartySection();
 
   // Laws tab
   updateSbLawsTab();

@@ -123,20 +123,7 @@
     <div id="sbEditRow" style="display:none"></div>
     <div id="sbNationHeader" style="display:none"></div>
     <div id="sbNoNatHeader" style="display:none"></div>
-    <!-- Party support — HOI4 style: ideology img | pie | list -->
-    <div class="party-section" id="partySection" style="display:none">
-      <div class="party-title">PARTY SUPPORT</div>
-      <div class="party-hoi-wrap">
-        <div class="party-img-wrap">
-          <img id="ideologyImg" src="ideology_beta.png" alt="" class="party-ideology-img">
-          <div class="party-ideology-name" id="ideologyLabelMain"></div>
-        </div>
-        <div class="party-pie-wrap">
-          <canvas id="partyPieCanvas" width="90" height="90"></canvas>
-        </div>
-        <div class="party-list-wrap" id="partyBars"></div>
-      </div>
-    </div>
+
     <div id="myPS" style="display:none"><div id="myPL"></div></div>
 
     <!-- ── STATE: No Nation ───────────────── -->
@@ -211,13 +198,18 @@
         </div>
       </div>
 
-      <!-- Ideology globe + party support -->
-      <div class="sb-ideology-block">
-        <div class="sb-ideology-globe">🌐</div>
-        <div class="sb-ideology-info">
-          <div class="sb-ideology-name" id="sbIdeologyName"></div>
-          <div class="sb-ideology-axis" id="sbIdeologyAxis"></div>
-          <div id="sbPartyRows"></div>
+      <!-- Party support (HOI4 style) -->
+      <div class="sb-party-support-block" id="partySection">
+        <div class="sb-ps-header">PARTY SUPPORT</div>
+        <div class="sb-ps-body">
+          <div class="sb-ideology-globe-wrap">
+            <img src="ideology_beta.png" alt="" id="ideologyImg" class="sb-ideology-img">
+          </div>
+          <div class="sb-ps-content">
+            <div class="sb-ideology-name" id="sbIdeologyName"></div>
+            <div class="sb-ideology-axis" id="sbIdeologyAxis"></div>
+            <div id="sbPartyRows"></div>
+          </div>
         </div>
       </div>
 
