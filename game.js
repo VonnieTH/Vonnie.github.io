@@ -1484,19 +1484,6 @@ window.toast=function(m){const t=document.getElementById('toast');t.textContent=
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS ethnic_groups JSONB DEFAULT '[]'::jsonb;
 // ALTER TABLE wc_nations ADD COLUMN IF NOT EXISTS migrant_pop INTEGER DEFAULT 0;
 
-// ── GOV SELECT BONUS PREVIEW ───────────────────────────────
-window.onGC=function(){
-  const el=document.getElementById('sG');
-  const gb=document.getElementById('gB');
-  if(!el||!gb) return;
-  const g=el.value;
-  gb.textContent=(GOVS[g]?.bonus)||'';
-  const col=GOVS[g]?.color||'#888';
-  const rgb=hexRgb(col);
-  gb.style.borderColor='rgba('+rgb.join(',')+', .3)';
-  gb.style.color=col;
-};
-
 // ── INIT ───────────────────────────────────────────────────
 (async function(){
   const{data:{session}}=await sb.auth.getSession();
@@ -1667,24 +1654,37 @@ function genCandidates(posKey, week, ns){
   const rng=mkRng(week*997+ns+posKey.split('').reduce((a,c)=>a+c.charCodeAt(0),0));
   const govKeys=Object.keys(GOVS);
   const traitKeys=Object.keys(TRAIT_EFFECTS);
-  const usedNames=new Set();
+  const nameLen=POLITICIAN_NAMES.length;
+  const usedIdx=new Set();
+
   return Array.from({length:3},(_,i)=>{
-    let ni=Math.floor(rng()*POLITICIAN_NAMES.length);
-    // Guarantee unique name
-    let attempts=0;
-    while(usedNames.has(ni)&&attempts<POLITICIAN_NAMES.length){ni=(ni+1)%POLITICIAN_NAMES.length;attempts++;}
-    usedNames.add(ni);
-    const gi=Math.floor(rng()*govKeys.length);
-    const ti=Math.floor(rng()*traitKeys.length);
-    const ideo=govKeys[gi];
-    const traitKey=traitKeys[ti];
+    // Draw all random values FIRST before any conditional logic
+    const r1=rng(), r2=rng(), r3=rng(), r4=rng(), r5=rng();
+
+    // Name: find unused index
+    let ni=Math.floor(r1*nameLen);
+    if(usedIdx.has(ni)){
+      // Pick next available slot
+      for(let d=1;d<nameLen;d++){
+        const try_=(ni+d)%nameLen;
+        if(!usedIdx.has(try_)){ni=try_;break;}
+      }
+    }
+    usedIdx.add(ni);
+
+    const gi=Math.floor(r2*govKeys.length);
+    const ti=Math.floor(r3*traitKeys.length);
+    const ideo=govKeys[gi]||govKeys[0];
+    const traitKey=traitKeys[ti]||traitKeys[0];
     const g=GOVS[ideo]||{color:'#888'};
     const pos=POSITIONS[posKey];
     const span=Math.max(pos.lifespan[1]-pos.lifespan[0],0);
-    const lifeWeeks=Math.max(1,pos.lifespan[0]+Math.floor(rng()*(span+1)));
-    const age=Math.floor(28+rng()*42);
+    const lifeWeeks=Math.max(1,pos.lifespan[0]+Math.floor(r4*(span+1)));
+    const age=Math.floor(28+r5*42);
+    const name=POLITICIAN_NAMES[ni];
+
     return{
-      name:POLITICIAN_NAMES[ni]||'Unknown',
+      name: (name&&name.length>0) ? name : POLITICIAN_NAMES[i % nameLen],
       ideology:ideo, color:g.color,
       age, lifeWeeks, trait:traitKey,
     };
@@ -1767,11 +1767,19 @@ async function clearExpiredCabinet(){
     if(!entry) return;
     const ws=entry.week_selected;
     const lw=entry.lifeWeeks;
-    if(!ws||ws<=0||!lw||lw<1||currentWeek()>=ws+lw){
+    const badName=!entry.name||entry.name==='Unknown'||entry.name.trim()==='';
+    const badTrait=!entry.trait||entry.trait==='undefined';
+    // Clear if: expired, bad week_selected, bad lifeWeeks, corrupt name/trait
+    if(!ws||ws<=0||!lw||lw<1||currentWeek()>=ws+lw||badName||badTrait){
       delete cab[posKey];
       changed=true;
     }
   });
+  if(changed){
+    await updateLaws({cabinet:cab});
+    mn.cabinet=cab;nations[mn.id]=mn;
+    renderPolTab&&renderPolTab();
+  }
   if(changed){
     await updateLaws({cabinet:cab});
     mn.cabinet=cab;nations[mn.id]=mn;
