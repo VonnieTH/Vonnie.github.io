@@ -7,10 +7,15 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
   background:#0d0f18;
   border-right:1px solid rgba(180,160,100,.18);
   display:flex;flex-direction:column;overflow-y:auto;
-  z-index:10;transition:width .25s ease;min-width:214px;
+  z-index:10;transition:width .25s ease,min-width .25s ease;min-width:214px;
   font-family:var(--mono);
 }
 #sb::-webkit-scrollbar{width:2px;}
+#sb::-webkit-scrollbar-thumb{background:rgba(180,160,100,.2);}
+/* Sidebar hidden state */
+#sb.sb-hidden{width:0;min-width:0;overflow:hidden;border-right:none;}
+/* Pie chart wrap */
+.sb-pie-wrap{flex-shrink:0;padding:6px 2px 6px 6px;display:flex;align-items:center;justify-content:center;}
 #sb::-webkit-scrollbar-thumb{background:rgba(180,160,100,.2);}
 
 /* ── No nation state ── */
@@ -288,6 +293,20 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .opbtn:hover,.opbtn:active{background:rgba(240,192,64,.12);}.opbtn.red{border-color:rgba(255,107,107,.4);color:#ff6b6b;}.opbtn.red:hover{background:rgba(255,107,107,.1);}
 .opmsg{font-size:8px;color:#40ff80;margin-top:5px;min-height:12px;}
 /* MOBILE */
+/* Sidebar edge toggle button */
+#sbEdgeBtn{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  z-index:200;background:rgba(8,8,20,.88);
+  border:1px solid rgba(0,212,255,.22);border-left:none;
+  color:rgba(0,212,255,.6);font-size:9px;
+  padding:14px 3px;cursor:pointer;
+  writing-mode:vertical-lr;letter-spacing:.1em;
+  transition:color .15s,background .15s,left .25s;
+  display:none;
+}
+#sbEdgeBtn:hover{background:rgba(0,212,255,.1);color:#00d4ff;}
+#sb.sb-hidden~#ma #sbEdgeBtn{left:0;}
+
 @media(max-width:768px){
   #sb{position:fixed;top:32px;bottom:0;left:0;width:220px;transform:translateX(-100%);z-index:300;box-shadow:4px 0 20px rgba(0,0,0,.6);}
   #sb.open{transform:translateX(0);}
@@ -327,8 +346,7 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .sb-party-support-block{border-top:1px solid rgba(180,160,100,.1);border-bottom:1px solid rgba(180,160,100,.1);}
 .sb-ps-header{font-size:7px;color:rgba(200,185,140,.3);letter-spacing:.18em;padding:4px 10px 3px;background:rgba(180,160,100,.04);}
 .sb-ps-body{display:flex;align-items:flex-start;gap:0;}
-.sb-ideology-globe-wrap{width:46px;flex-shrink:0;padding:8px 6px;display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(180,160,100,.08);}
-.sb-ideology-img{width:34px;height:34px;object-fit:contain;}
+.sb-pie-wrap{flex-shrink:0;padding:6px 4px 6px 6px;display:flex;align-items:center;justify-content:center;}
 .sb-ps-content{flex:1;padding:6px 8px 8px;min-width:0;}
 .sb-ideology-name{font-size:9px;letter-spacing:.04em;margin-bottom:1px;}
 .sb-ideology-axis{font-size:7px;color:rgba(200,185,140,.35);letter-spacing:.08em;margin-bottom:5px;}
@@ -409,6 +427,20 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 #sbNoNatHeader{padding:14px 10px;text-align:center;border-bottom:1px solid rgba(0,212,255,.06);}
 
 /* ═══════ MOBILE SIDEBAR ═══════ */
+/* Sidebar edge toggle button */
+#sbEdgeBtn{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  z-index:200;background:rgba(8,8,20,.88);
+  border:1px solid rgba(0,212,255,.22);border-left:none;
+  color:rgba(0,212,255,.6);font-size:9px;
+  padding:14px 3px;cursor:pointer;
+  writing-mode:vertical-lr;letter-spacing:.1em;
+  transition:color .15s,background .15s,left .25s;
+  display:none;
+}
+#sbEdgeBtn:hover{background:rgba(0,212,255,.1);color:#00d4ff;}
+#sb.sb-hidden~#ma #sbEdgeBtn{left:0;}
+
 @media(max-width:768px){
   #sb{width:224px;}
   #rp{width:232px;}
@@ -525,6 +557,20 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .act-section{padding:6px 8px;display:flex;flex-direction:column;gap:3px;}
 
 /* Province panel on mobile — full width bottom sheet */
+/* Sidebar edge toggle button */
+#sbEdgeBtn{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  z-index:200;background:rgba(8,8,20,.88);
+  border:1px solid rgba(0,212,255,.22);border-left:none;
+  color:rgba(0,212,255,.6);font-size:9px;
+  padding:14px 3px;cursor:pointer;
+  writing-mode:vertical-lr;letter-spacing:.1em;
+  transition:color .15s,background .15s,left .25s;
+  display:none;
+}
+#sbEdgeBtn:hover{background:rgba(0,212,255,.1);color:#00d4ff;}
+#sb.sb-hidden~#ma #sbEdgeBtn{left:0;}
+
 @media(max-width:768px){
   #provPanel,#diploPanel{left:0;width:100%;max-height:55vh;}
   #rp{display:none !important;}

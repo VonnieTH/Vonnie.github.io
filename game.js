@@ -831,57 +831,83 @@ function updatePartySection(){
   const govData=GOVS[mn.gov]||{};
   const govColor=govData.color||'#aaa';
 
-  // Ideology name + axis
   const nameEl=document.getElementById('sbIdeologyName');
   const axisEl=document.getElementById('sbIdeologyAxis');
   if(nameEl){nameEl.textContent=mn.gov||'';nameEl.style.color=govColor;}
   if(axisEl) axisEl.textContent=(govData.axis||'').toUpperCase();
 
-  // Party rows
+  // Party rows (compact — no bar, just dot+name+pct)
   const rowsEl=document.getElementById('sbPartyRows');
-  if(!rowsEl) return;
-  const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  rowsEl.innerHTML=sorted.map(([name,pct])=>{
-    const g=GOVS[name];const col=g?g.color:'#888';const isCur=name===mn.gov;
-    return '<div class="sb-party-row">'
-      +'<div class="sb-party-dot" style="background:'+col+'"></div>'
-      +'<span class="sb-party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';':'')+'">'+name+'</span>'
-      +'<span class="sb-party-pct" style="color:'+col+'">'+pct+'</span>'
-      +'</div>'
-      +'<div class="sb-party-bar"><div class="sb-party-bar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>';
-  }).join('');
+  if(rowsEl){
+    const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,7);
+    rowsEl.innerHTML=sorted.map(([name,pct])=>{
+      const g=GOVS[name];const col=g?g.color:'#888';const isCur=name===mn.gov;
+      return '<div class="sb-party-row">'
+        +'<div class="sb-party-dot" style="background:'+col+(isCur?';box-shadow:0 0 4px '+col:'')+'"></div>'
+        +'<span class="sb-party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';':'')+'">'+name+'</span>'
+        +'<span class="sb-party-pct" style="color:'+col+'">'+pct+'</span>'
+        +'</div>';
+    }).join('');
+  }
+
+  // Pie chart
+  drawPartyPie();
 }
 
-function drawPartyPie(){ /* no-op — pie removed */ }
+function drawPartyPie(){
+  const canvas=document.getElementById('partyPieCanvas');
+  if(!canvas||!mn) return;
+  const ps=mn.party_support||{};
+  const entries=Object.entries(ps).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return;
 
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  const cx=W/2,cy=H/2,R=Math.min(W,H)/2-2;
+  ctx.clearRect(0,0,W,H);
 
-function updateNatUI(){
-  if(!mn) return;
-  // Keep hidden ghost IDs in sync (for any legacy code)
-  const g=id=>document.getElementById(id);
-  if(g('sbN')) g('sbN').textContent=mn.name;
-  if(g('sbG')) g('sbG').textContent=mn.gov||'';
-  const inc=calcIncome(mn.id);
-  if(g('rG')) g('rG').textContent=Math.round(mn.gold);
-  if(g('rM')) g('rM').textContent=Math.round(mn.manpower);
-  if(g('rS')) g('rS').textContent=Math.round(mn.supply);
-  if(g('rSt')) g('rSt').textContent=mn.stability+'%';
-  if(g('iG')) g('iG').textContent='+'+inc.gold+'/hr';
-  if(g('iM')) g('iM').textContent='+'+inc.mp+'/hr';
-  if(g('iSup')) g('iSup').textContent='+'+inc.sup+'/hr';
+  const total=entries.reduce((s,[,v])=>s+v,0);
+  let angle=-Math.PI/2;
 
-  // Show/hide main panels
-  const noNat=g('noNat'), polPanel=g('sbPolPanel'), diploPanel=g('sbDiploPanel'), unclPanel=g('sbUnclaimedPanel');
-  if(noNat) noNat.style.display='none';
-  if(polPanel) polPanel.style.display='';
-  if(diploPanel) diploPanel.style.display='none';
-  if(unclPanel) unclPanel.style.display='none';
+  entries.forEach(([name,pct])=>{
+    const g=GOVS[name];
+    const col=g?.color||'#888';
+    const isCur=name===mn.gov;
+    const sweep=(pct/total)*Math.PI*2;
 
-  updateFlagLeader();
-  updateSbPolPanel();
-  updateTickDisplay();
-  refreshSb();
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,isCur?R:R-1.5,angle,angle+sweep);
+    ctx.closePath();
+    ctx.fillStyle=col+(isCur?'ff':'99');
+    ctx.fill();
+    ctx.strokeStyle='rgba(8,8,20,.7)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+
+    if(isCur){
+      // Highlight active gov slice
+      ctx.beginPath();
+      ctx.arc(cx,cy,R,angle,angle+sweep);
+      ctx.strokeStyle=col;
+      ctx.lineWidth=2;
+      ctx.stroke();
+    }
+
+    angle+=sweep;
+  });
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(cx,cy,R*0.18,0,Math.PI*2);
+  ctx.fillStyle='#0d0f18';
+  ctx.fill();
+  ctx.strokeStyle=GOVS[mn.gov]?.color||'#888';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
 }
+
+
 
 function updateSbPolPanel(){
   if(!mn) return;
@@ -1132,20 +1158,53 @@ window.closeInfoPanel=window.closeProvCard=window.closeDiploPanel=window.closePr
   selProv=null; draw();
 };
 
-window.openInfoFromCard=function(){ /* no-op — no separate card */ };
+window.openInfoFromCard=function(){ /* no-op */ };
 
+// ── SIDEBAR OPEN/CLOSE ────────────────────────────────────
+function setSbVisible(visible){
+  const sb=document.getElementById('sb');
+  const btn=document.getElementById('sbEdgeBtn');
+  if(visible){
+    sb.classList.remove('sb-hidden');
+    if(btn){btn.textContent='◀';btn.style.display='';}
+  } else {
+    sb.classList.add('sb-hidden');
+    if(btn){btn.textContent='▶';btn.style.display='';}
+  }
+}
+
+window.toggleSbDesktop=function(){
+  const sb=document.getElementById('sb');
+  setSbVisible(sb.classList.contains('sb-hidden'));
+};
+
+// Q = scroll to party support, S = toggle sidebar
 window.toggleNatPanel=function(){
-  if(!mn) return;
-  // Toggle political / province tab
-  sbSwitchTab(0);
+  const sb=document.getElementById('sb');
+  if(sb.classList.contains('sb-hidden')){
+    setSbVisible(true);
+  } else {
+    const psec=document.getElementById('partySection');
+    if(psec) sb.scrollTo({top:psec.offsetTop-40,behavior:'smooth'});
+  }
 };
 
 window.addEventListener('keydown',e=>{
-  if(e.key==='q'||e.key==='Q'){
-    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
-    if(mn){sbSwitchTab(0);}
-  }
+  if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+  if(e.key==='s'||e.key==='S') toggleSbDesktop();
+  if((e.key==='q'||e.key==='Q')&&mn) toggleNatPanel();
 });
+
+// Show edge button on desktop
+function updateEdgeBtn(){
+  const btn=document.getElementById('sbEdgeBtn');
+  if(!btn) return;
+  if(window.innerWidth>768){
+    btn.style.display='';
+  } else {
+    btn.style.display='none';
+  }
+}
 
 
 // ── GOV MODAL ──────────────────────────────────────────────
@@ -1292,25 +1351,6 @@ window.ownerGov=async function(){
 
 // ── MOBILE SIDEBAR ─────────────────────────────────────────
 
-// ── DESKTOP SIDEBAR TOGGLE — now no-op (use flag or Q) ─────
-window.toggleSbDesktop=function(){};
-
-// Toggle political panel via flag click or Q key
-window.toggleNatPanel=function(){
-  if(!mn) return;
-  // Scroll sidebar to party section smoothly
-  const psec=document.getElementById('partySection');
-  const sb=document.getElementById('sb');
-  if(psec&&sb) sb.scrollTo({top:psec.offsetTop,behavior:'smooth'});
-};
-
-window.addEventListener('keydown',e=>{
-  if(e.key==='q'||e.key==='Q'){
-    if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
-    toggleNatPanel();
-  }
-});
-
 window.toggleSb=function(){
   const sb=document.getElementById('sb'),ov=document.getElementById('sbOverlay');
   const wasOpen=sb.classList.contains('open');
@@ -1335,6 +1375,7 @@ function setupMobile(){
     const rp=document.getElementById('rp');if(rp)rp.classList.remove('open');
     document.getElementById('sbOverlay').style.display='none';
   }
+  updateEdgeBtn();
 }
 window.addEventListener('resize',()=>{setupMobile();resize();});
 setupMobile();
@@ -1428,91 +1469,91 @@ const POSITIONS = {
 const LAWS = {
   // ── GOVERNMENT STRUCTURE ──
   strong_exec:    {cat:'Government',  name:'Strong Executive',   buffs:{stability:12},          debuffs:{gold:-3},              govs:['Autocracy','Neo-Authoritarianism','Institutionalism'],              req_ideology:30, enact_weeks:1},
-  fed_system:     {cat:'Government',  name:'Federal System',     buffs:{gold:5,manpower:5,supply:5},debuffs:{stability:-4},     govs:['Paperist Democracy','Classical Liberalism','Reformatorist Left'],  req_ideology:40, enact_weeks:2},
+  fed_system:     {cat:'Government',  name:'Federal System',     buffs:{gold:5,manpower:5,supply:5},debuffs:{stability:-4},     govs:['Paperist Democracy','Classical Liberalism','Reformatorist Left'],  req_ideology:40, enact_weeks:1},
   emergency_law:  {cat:'Government',  name:'Emergency Powers',   buffs:{manpower:15,stability:8},debuffs:{gold:-10,support:-10},govs:['Autocracy','Neo-Authoritarianism','Third Positionism'],            req_ideology:50, enact_weeks:1},
-  civil_service:  {cat:'Government',  name:'Civil Service Reform',buffs:{gold:4,stability:6},   debuffs:{},                    govs:['Institutionalism','Paperist Democracy','Classical Liberalism'],     req_ideology:25, enact_weeks:3},
+  civil_service:  {cat:'Government',  name:'Civil Service Reform',buffs:{gold:4,stability:6},   debuffs:{},                    govs:['Institutionalism','Paperist Democracy','Classical Liberalism'],     req_ideology:25, enact_weeks:2},
 
   // ── PUBLIC HEALTH ──
-  natl_health:    {cat:'Public Health',name:'National Healthcare',buffs:{manpower:8,stability:6},debuffs:{gold:-8},            govs:['Reformatorist Left','Paperolutionary Left','Aesthetic Democracy','Paperist Democracy'],req_ideology:35,enact_weeks:3},
+  natl_health:    {cat:'Public Health',name:'National Healthcare',buffs:{manpower:8,stability:6},debuffs:{gold:-8},            govs:['Reformatorist Left','Paperolutionary Left','Aesthetic Democracy','Paperist Democracy'],req_ideology:35,enact_weeks:2},
   quarantine:     {cat:'Public Health',name:'Quarantine Act',     buffs:{stability:5},           debuffs:{manpower:-5,gold:-3},govs:['Institutionalism','Neo-Authoritarianism','Autocracy'],             req_ideology:20, enact_weeks:1},
-  labor_protect:  {cat:'Public Health',name:'Labor Protections',  buffs:{manpower:10,stability:5},debuffs:{gold:-6},           govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],    req_ideology:30, enact_weeks:2},
-  state_housing:  {cat:'Public Health',name:'State Housing',      buffs:{manpower:12},           debuffs:{gold:-10,supply:-4}, govs:['Paperolutionary Left','Reformatorist Left','Institutionalism'],   req_ideology:40, enact_weeks:4},
+  labor_protect:  {cat:'Public Health',name:'Labor Protections',  buffs:{manpower:10,stability:5},debuffs:{gold:-6},           govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],    req_ideology:30, enact_weeks:1},
+  state_housing:  {cat:'Public Health',name:'State Housing',      buffs:{manpower:12},           debuffs:{gold:-10,supply:-4}, govs:['Paperolutionary Left','Reformatorist Left','Institutionalism'],   req_ideology:40, enact_weeks:3},
 
   // ── FREEDOM ──
   free_press:     {cat:'Freedom',     name:'Free Press',          buffs:{stability:5,support:8}, debuffs:{gold:-3},            govs:['Paperist Democracy','Classical Liberalism','Aesthetic Democracy'], req_ideology:25, enact_weeks:1},
   open_border:    {cat:'Freedom',     name:'Open Borders',        buffs:{manpower:10,stability:5},debuffs:{},                  govs:['Anarchism','Post-Modernism','Aesthetic Democracy'],                req_ideology:20, enact_weeks:1},
-  free_assembly:  {cat:'Freedom',     name:'Right of Assembly',   buffs:{support:12,stability:6},debuffs:{gold:-2},            govs:['Paperist Democracy','Anarchism','Reformatorist Left','Aesthetic Democracy'],req_ideology:30,enact_weeks:2},
+  free_assembly:  {cat:'Freedom',     name:'Right of Assembly',   buffs:{support:12,stability:6},debuffs:{gold:-2},            govs:['Paperist Democracy','Anarchism','Reformatorist Left','Aesthetic Democracy'],req_ideology:30,enact_weeks:1},
   censorship:     {cat:'Freedom',     name:'State Censorship',    buffs:{stability:10},          debuffs:{support:-15,gold:-4},govs:['Autocracy','Neo-Authoritarianism','Superiority Radicalism'],      req_ideology:45, enact_weeks:1},
 
   // ── TAXATION ──
-  flat_tax:       {cat:'Taxation',    name:'Flat Tax',            buffs:{gold:10},               debuffs:{stability:-4},       govs:['Classical Liberalism','Eclecticism','Post-Modernism'],            req_ideology:30, enact_weeks:2},
-  progressive_tax:{cat:'Taxation',   name:'Progressive Taxation',buffs:{gold:6,stability:5},    debuffs:{},                   govs:['Reformatorist Left','Paperist Democracy','Institutionalism'],     req_ideology:35, enact_weeks:2},
+  flat_tax:       {cat:'Taxation',    name:'Flat Tax',            buffs:{gold:10},               debuffs:{stability:-4},       govs:['Classical Liberalism','Eclecticism','Post-Modernism'],            req_ideology:30, enact_weeks:1},
+  progressive_tax:{cat:'Taxation',   name:'Progressive Taxation',buffs:{gold:6,stability:5},    debuffs:{},                   govs:['Reformatorist Left','Paperist Democracy','Institutionalism'],     req_ideology:35, enact_weeks:1},
   zero_tax:       {cat:'Taxation',    name:'No Taxation',         buffs:{support:20},            debuffs:{gold:-20,stability:-6},govs:['Anarchism','Classical Liberalism'],                             req_ideology:55, enact_weeks:1},
   war_levy:       {cat:'Taxation',    name:'War Levy',            buffs:{gold:14,manpower:8},    debuffs:{stability:-8,support:-10},govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],req_ideology:45,enact_weeks:1},
 
   // ── ECONOMY ──
-  open_market:    {cat:'Economy',     name:'Open Markets',        buffs:{gold:15},               debuffs:{manpower:-5},        govs:['Classical Liberalism','Eclecticism','Post-Modernism'],            req_ideology:30, enact_weeks:2},
-  nationalize:    {cat:'Economy',     name:'Nationalization',     buffs:{supply:14,manpower:8},  debuffs:{gold:-10},           govs:['Paperolutionary Left','Reformatorist Left','Institutionalism'],   req_ideology:40, enact_weeks:4},
-  war_economy:    {cat:'Economy',     name:'War Economy',         buffs:{manpower:18,supply:10}, debuffs:{gold:-14,stability:-5},govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],req_ideology:45,enact_weeks:2},
-  land_reform:    {cat:'Economy',     name:'Land Reform',         buffs:{supply:10,stability:5}, debuffs:{gold:-4},            govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],   req_ideology:35, enact_weeks:3},
+  open_market:    {cat:'Economy',     name:'Open Markets',        buffs:{gold:15},               debuffs:{manpower:-5},        govs:['Classical Liberalism','Eclecticism','Post-Modernism'],            req_ideology:30, enact_weeks:1},
+  nationalize:    {cat:'Economy',     name:'Nationalization',     buffs:{supply:14,manpower:8},  debuffs:{gold:-10},           govs:['Paperolutionary Left','Reformatorist Left','Institutionalism'],   req_ideology:40, enact_weeks:3},
+  war_economy:    {cat:'Economy',     name:'War Economy',         buffs:{manpower:18,supply:10}, debuffs:{gold:-14,stability:-5},govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],req_ideology:45,enact_weeks:1},
+  land_reform:    {cat:'Economy',     name:'Land Reform',         buffs:{supply:10,stability:5}, debuffs:{gold:-4},            govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],   req_ideology:35, enact_weeks:2},
 
   // ── MILITARY ──
-  conscript:      {cat:'Military',    name:'Conscription',        buffs:{manpower:20},           debuffs:{gold:-10,stability:-4},govs:['Third Positionism','Superiority Radicalism','Paperolutionary Left'],req_ideology:40,enact_weeks:2},
-  professional:   {cat:'Military',    name:'Professional Army',   buffs:{manpower:10,stability:4},debuffs:{gold:-8,supply:-4}, govs:['Institutionalism','Neo-Authoritarianism','Autocracy','Classical Liberalism'],req_ideology:35,enact_weeks:3},
+  conscript:      {cat:'Military',    name:'Conscription',        buffs:{manpower:20},           debuffs:{gold:-10,stability:-4},govs:['Third Positionism','Superiority Radicalism','Paperolutionary Left'],req_ideology:40,enact_weeks:1},
+  professional:   {cat:'Military',    name:'Professional Army',   buffs:{manpower:10,stability:4},debuffs:{gold:-8,supply:-4}, govs:['Institutionalism','Neo-Authoritarianism','Autocracy','Classical Liberalism'],req_ideology:35,enact_weeks:2},
   total_war:      {cat:'Military',    name:'Total War Doctrine',  buffs:{manpower:25,supply:10}, debuffs:{gold:-18,stability:-12,support:-12},govs:['Superiority Radicalism','Third Positionism'],    req_ideology:60, enact_weeks:1},
 
   // ── CULTURE & RELIGION ──
-  theocratic:     {cat:'Culture', name:'Sacred Law',            buffs:{stability:15},           debuffs:{gold:-3,support:-5},           govs:['Traditionalist Right','Institutionalism'],                             req_ideology:35,enact_weeks:2},
+  theocratic:     {cat:'Culture', name:'Sacred Law',            buffs:{stability:15},           debuffs:{gold:-3,support:-5},           govs:['Traditionalist Right','Institutionalism'],                             req_ideology:35,enact_weeks:1},
   state_media:    {cat:'Culture', name:'State Media',           buffs:{stability:10,support:6}, debuffs:{gold:-2},                      govs:['Autocracy','Neo-Authoritarianism','Superiority Radicalism'],           req_ideology:35,enact_weeks:1},
-  cultural_rev:   {cat:'Culture', name:'Cultural Revolution',   buffs:{support:15,stability:5}, debuffs:{gold:-5,manpower:-5},          govs:['Paperolutionary Left','Aesthetic Democracy','Post-Modernism'],        req_ideology:50,enact_weeks:3},
-  heritage_prot:  {cat:'Culture', name:'Heritage Protection',   buffs:{stability:8,support:5},  debuffs:{},                             govs:['Traditionalist Right','Institutionalism','Paperist Democracy'],        req_ideology:25,enact_weeks:2},
-  art_patronage:  {cat:'Culture', name:'State Art Patronage',   buffs:{support:10,stability:5}, debuffs:{gold:-4},                      govs:['Aesthetic Democracy','Post-Modernism','Paperist Democracy'],           req_ideology:30,enact_weeks:2},
-  religious_tol:  {cat:'Culture', name:'Religious Tolerance',   buffs:{stability:6,support:8},  debuffs:{},                             govs:['Paperist Democracy','Classical Liberalism','Anarchism','Eclecticism'], req_ideology:25,enact_weeks:2},
-  cult_of_state:  {cat:'Culture', name:'Cult of the State',     buffs:{stability:14,support:8}, debuffs:{gold:-4,manpower:-4},          govs:['Autocracy','Superiority Radicalism','Third Positionism'],             req_ideology:50,enact_weeks:2},
+  cultural_rev:   {cat:'Culture', name:'Cultural Revolution',   buffs:{support:15,stability:5}, debuffs:{gold:-5,manpower:-5},          govs:['Paperolutionary Left','Aesthetic Democracy','Post-Modernism'],        req_ideology:50,enact_weeks:2},
+  heritage_prot:  {cat:'Culture', name:'Heritage Protection',   buffs:{stability:8,support:5},  debuffs:{},                             govs:['Traditionalist Right','Institutionalism','Paperist Democracy'],        req_ideology:25,enact_weeks:1},
+  art_patronage:  {cat:'Culture', name:'State Art Patronage',   buffs:{support:10,stability:5}, debuffs:{gold:-4},                      govs:['Aesthetic Democracy','Post-Modernism','Paperist Democracy'],           req_ideology:30,enact_weeks:1},
+  religious_tol:  {cat:'Culture', name:'Religious Tolerance',   buffs:{stability:6,support:8},  debuffs:{},                             govs:['Paperist Democracy','Classical Liberalism','Anarchism','Eclecticism'], req_ideology:25,enact_weeks:1},
+  cult_of_state:  {cat:'Culture', name:'Cult of the State',     buffs:{stability:14,support:8}, debuffs:{gold:-4,manpower:-4},          govs:['Autocracy','Superiority Radicalism','Third Positionism'],             req_ideology:50,enact_weeks:1},
 
   // ── TRADE & DIPLOMACY ──
-  trade_routes:   {cat:'Trade',   name:'Trade Route Network',   buffs:{gold:18},                debuffs:{manpower:-3},                  govs:['Classical Liberalism','Paperist Democracy','Eclecticism'],             req_ideology:30,enact_weeks:3},
-  guild_system:   {cat:'Trade',   name:'Merchant Guilds',       buffs:{gold:10,supply:6},       debuffs:{stability:-3},                 govs:['Classical Liberalism','Eclecticism','Post-Modernism'],                 req_ideology:25,enact_weeks:2},
-  port_law:       {cat:'Trade',   name:'Free Port Charter',     buffs:{gold:14,supply:5},       debuffs:{},                             govs:['Anarchism','Classical Liberalism','Aesthetic Democracy'],              req_ideology:35,enact_weeks:2},
+  trade_routes:   {cat:'Trade',   name:'Trade Route Network',   buffs:{gold:18},                debuffs:{manpower:-3},                  govs:['Classical Liberalism','Paperist Democracy','Eclecticism'],             req_ideology:30,enact_weeks:2},
+  guild_system:   {cat:'Trade',   name:'Merchant Guilds',       buffs:{gold:10,supply:6},       debuffs:{stability:-3},                 govs:['Classical Liberalism','Eclecticism','Post-Modernism'],                 req_ideology:25,enact_weeks:1},
+  port_law:       {cat:'Trade',   name:'Free Port Charter',     buffs:{gold:14,supply:5},       debuffs:{},                             govs:['Anarchism','Classical Liberalism','Aesthetic Democracy'],              req_ideology:35,enact_weeks:1},
   embargo:        {cat:'Trade',   name:'Trade Embargo',         buffs:{manpower:6,stability:5}, debuffs:{gold:-14},                     govs:['Superiority Radicalism','Third Positionism','Autocracy'],              req_ideology:40,enact_weeks:1},
-  silk_roads:     {cat:'Trade',   name:'Silk Road Access',      buffs:{gold:20,supply:8},       debuffs:{manpower:-5},                  govs:['Eclecticism','Classical Liberalism','Post-Modernism','Institutionalism'],req_ideology:35,enact_weeks:4},
-  monopoly_law:   {cat:'Trade',   name:'State Monopoly',        buffs:{gold:12,supply:8},       debuffs:{stability:-4},                 govs:['Autocracy','Neo-Authoritarianism','Institutionalism'],                 req_ideology:35,enact_weeks:2},
-  tariff_wall:    {cat:'Trade',   name:'Protective Tariffs',    buffs:{gold:8,supply:6},        debuffs:{manpower:-3},                  govs:['Institutionalism','Third Positionism','Traditionalist Right'],         req_ideology:30,enact_weeks:2},
+  silk_roads:     {cat:'Trade',   name:'Silk Road Access',      buffs:{gold:20,supply:8},       debuffs:{manpower:-5},                  govs:['Eclecticism','Classical Liberalism','Post-Modernism','Institutionalism'],req_ideology:35,enact_weeks:3},
+  monopoly_law:   {cat:'Trade',   name:'State Monopoly',        buffs:{gold:12,supply:8},       debuffs:{stability:-4},                 govs:['Autocracy','Neo-Authoritarianism','Institutionalism'],                 req_ideology:35,enact_weeks:1},
+  tariff_wall:    {cat:'Trade',   name:'Protective Tariffs',    buffs:{gold:8,supply:6},        debuffs:{manpower:-3},                  govs:['Institutionalism','Third Positionism','Traditionalist Right'],         req_ideology:30,enact_weeks:1},
 
   // ── SCIENCE & TECHNOLOGY ──
-  state_academia: {cat:'Science', name:'State Academies',       buffs:{gold:6,stability:5,supply:4},debuffs:{manpower:-3},             govs:['Institutionalism','Paperist Democracy','Classical Liberalism'],        req_ideology:30,enact_weeks:3},
-  industrialize:  {cat:'Science', name:'Industrialization',     buffs:{gold:14,supply:12},      debuffs:{stability:-6,manpower:-4},     govs:['Classical Liberalism','Neo-Authoritarianism','Post-Modernism'],       req_ideology:40,enact_weeks:5},
-  weapon_research:{cat:'Science', name:'Weapons Research',      buffs:{manpower:14,supply:6},   debuffs:{gold:-10},                    govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],   req_ideology:40,enact_weeks:4},
-  agri_reform:    {cat:'Science', name:'Agricultural Reform',   buffs:{supply:16,manpower:6},   debuffs:{gold:-4},                     govs:['Reformatorist Left','Institutionalism','Paperist Democracy'],          req_ideology:30,enact_weeks:3},
-  printing_press: {cat:'Science', name:'Printing Press',        buffs:{support:12,stability:4}, debuffs:{},                            govs:['Paperist Democracy','Aesthetic Democracy','Classical Liberalism'],      req_ideology:25,enact_weeks:2},
-  cartography:    {cat:'Science', name:'Royal Cartography',     buffs:{gold:5,supply:5,stability:4},debuffs:{},                        govs:['Institutionalism','Classical Liberalism','Neo-Authoritarianism'],      req_ideology:20,enact_weeks:2},
-  alchemy_prog:   {cat:'Science', name:'Alchemy Programme',     buffs:{supply:10,gold:8},       debuffs:{stability:-3},                govs:['Post-Modernism','Aesthetic Democracy','Eclecticism'],                  req_ideology:30,enact_weeks:3},
+  state_academia: {cat:'Science', name:'State Academies',       buffs:{gold:6,stability:5,supply:4},debuffs:{manpower:-3},             govs:['Institutionalism','Paperist Democracy','Classical Liberalism'],        req_ideology:30,enact_weeks:2},
+  industrialize:  {cat:'Science', name:'Industrialization',     buffs:{gold:14,supply:12},      debuffs:{stability:-6,manpower:-4},     govs:['Classical Liberalism','Neo-Authoritarianism','Post-Modernism'],       req_ideology:40,enact_weeks:4},
+  weapon_research:{cat:'Science', name:'Weapons Research',      buffs:{manpower:14,supply:6},   debuffs:{gold:-10},                    govs:['Third Positionism','Superiority Radicalism','Neo-Authoritarianism'],   req_ideology:40,enact_weeks:3},
+  agri_reform:    {cat:'Science', name:'Agricultural Reform',   buffs:{supply:16,manpower:6},   debuffs:{gold:-4},                     govs:['Reformatorist Left','Institutionalism','Paperist Democracy'],          req_ideology:30,enact_weeks:2},
+  printing_press: {cat:'Science', name:'Printing Press',        buffs:{support:12,stability:4}, debuffs:{},                            govs:['Paperist Democracy','Aesthetic Democracy','Classical Liberalism'],      req_ideology:25,enact_weeks:1},
+  cartography:    {cat:'Science', name:'Royal Cartography',     buffs:{gold:5,supply:5,stability:4},debuffs:{},                        govs:['Institutionalism','Classical Liberalism','Neo-Authoritarianism'],      req_ideology:20,enact_weeks:1},
+  alchemy_prog:   {cat:'Science', name:'Alchemy Programme',     buffs:{supply:10,gold:8},       debuffs:{stability:-3},                govs:['Post-Modernism','Aesthetic Democracy','Eclecticism'],                  req_ideology:30,enact_weeks:2},
 
   // ── POPULATION & MIGRATION ──
-  assimilation:   {cat:'Population',name:'Assimilation Policy', buffs:{stability:8,support:6},  debuffs:{manpower:-4},                 govs:['Autocracy','Neo-Authoritarianism','Institutionalism','Third Positionism'],req_ideology:35,enact_weeks:3,blocks_migration:true},
-  multiculturalism:{cat:'Population',name:'Multiculturalism',   buffs:{gold:6,manpower:8,supply:5},debuffs:{stability:-4},             govs:['Paperist Democracy','Anarchism','Aesthetic Democracy','Post-Modernism'],req_ideology:30,enact_weeks:2,boosts_migration:true},
-  population_boom:{cat:'Population',name:'Population Incentive',buffs:{manpower:16,supply:8},  debuffs:{gold:-8},                     govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],        req_ideology:35,enact_weeks:3},
+  assimilation:   {cat:'Population',name:'Assimilation Policy', buffs:{stability:8,support:6},  debuffs:{manpower:-4},                 govs:['Autocracy','Neo-Authoritarianism','Institutionalism','Third Positionism'],req_ideology:35,enact_weeks:2,blocks_migration:true},
+  multiculturalism:{cat:'Population',name:'Multiculturalism',   buffs:{gold:6,manpower:8,supply:5},debuffs:{stability:-4},             govs:['Paperist Democracy','Anarchism','Aesthetic Democracy','Post-Modernism'],req_ideology:30,enact_weeks:1,boosts_migration:true},
+  population_boom:{cat:'Population',name:'Population Incentive',buffs:{manpower:16,supply:8},  debuffs:{gold:-8},                     govs:['Reformatorist Left','Paperolutionary Left','Institutionalism'],        req_ideology:35,enact_weeks:2},
   ethnic_cleanse: {cat:'Population',name:'Ethnic Purge',        buffs:{stability:12,manpower:8},debuffs:{support:-20,gold:-8},         govs:['Superiority Radicalism','Third Positionism'],                         req_ideology:65,enact_weeks:1,blocks_migration:true},
-  migration_wave: {cat:'Population',name:'Open Migration',      buffs:{manpower:12,gold:5},     debuffs:{stability:-6},                govs:['Anarchism','Post-Modernism','Aesthetic Democracy'],                    req_ideology:25,enact_weeks:2,boosts_migration:true},
-  settle_frontier:{cat:'Population',name:'Frontier Settlement', buffs:{manpower:10,supply:8},   debuffs:{gold:-5},                     govs:['Institutionalism','Traditionalist Right','Neo-Authoritarianism'],      req_ideology:30,enact_weeks:3},
-  diaspora_return:{cat:'Population',name:'Diaspora Return Act', buffs:{manpower:14,gold:4},     debuffs:{},                            govs:['Traditionalist Right','Institutionalism','Paperist Democracy'],        req_ideology:35,enact_weeks:2,boosts_migration:true},
+  migration_wave: {cat:'Population',name:'Open Migration',      buffs:{manpower:12,gold:5},     debuffs:{stability:-6},                govs:['Anarchism','Post-Modernism','Aesthetic Democracy'],                    req_ideology:25,enact_weeks:1,boosts_migration:true},
+  settle_frontier:{cat:'Population',name:'Frontier Settlement', buffs:{manpower:10,supply:8},   debuffs:{gold:-5},                     govs:['Institutionalism','Traditionalist Right','Neo-Authoritarianism'],      req_ideology:30,enact_weeks:2},
+  diaspora_return:{cat:'Population',name:'Diaspora Return Act', buffs:{manpower:14,gold:4},     debuffs:{},                            govs:['Traditionalist Right','Institutionalism','Paperist Democracy'],        req_ideology:35,enact_weeks:1,boosts_migration:true},
 
   // ── JUSTICE & ORDER ──
-  rule_of_law:    {cat:'Justice',  name:'Rule of Law',          buffs:{stability:10,gold:4},    debuffs:{},                            govs:['Paperist Democracy','Classical Liberalism','Institutionalism'],        req_ideology:25,enact_weeks:2},
+  rule_of_law:    {cat:'Justice',  name:'Rule of Law',          buffs:{stability:10,gold:4},    debuffs:{},                            govs:['Paperist Democracy','Classical Liberalism','Institutionalism'],        req_ideology:25,enact_weeks:1},
   martial_law:    {cat:'Justice',  name:'Martial Law',          buffs:{stability:15,manpower:8},debuffs:{support:-12,gold:-5},         govs:['Autocracy','Neo-Authoritarianism','Third Positionism'],               req_ideology:45,enact_weeks:1,blocks_migration:true},
-  prison_reform:  {cat:'Justice',  name:'Prison Reform',        buffs:{stability:5,support:8},  debuffs:{gold:-3},                     govs:['Reformatorist Left','Paperist Democracy','Aesthetic Democracy'],       req_ideology:25,enact_weeks:2},
+  prison_reform:  {cat:'Justice',  name:'Prison Reform',        buffs:{stability:5,support:8},  debuffs:{gold:-3},                     govs:['Reformatorist Left','Paperist Democracy','Aesthetic Democracy'],       req_ideology:25,enact_weeks:1},
   secret_police:  {cat:'Justice',  name:'Secret Police',        buffs:{stability:12},           debuffs:{support:-10,gold:-3},         govs:['Autocracy','Neo-Authoritarianism','Superiority Radicalism'],          req_ideology:45,enact_weeks:1,blocks_migration:true},
-  civilian_arms:  {cat:'Justice',  name:'Right to Bear Arms',   buffs:{manpower:10,support:8},  debuffs:{stability:-8},                govs:['Anarchism','Classical Liberalism'],                                    req_ideology:40,enact_weeks:2},
-  judicial_indep: {cat:'Justice',  name:'Judicial Independence',buffs:{stability:8,support:6},  debuffs:{gold:-2},                     govs:['Paperist Democracy','Classical Liberalism','Institutionalism'],        req_ideology:30,enact_weeks:3},
-  inquisition:    {cat:'Justice',  name:'Inquisition',          buffs:{stability:10,manpower:5},debuffs:{support:-8,gold:-4},          govs:['Traditionalist Right','Autocracy'],                                    req_ideology:40,enact_weeks:2},
+  civilian_arms:  {cat:'Justice',  name:'Right to Bear Arms',   buffs:{manpower:10,support:8},  debuffs:{stability:-8},                govs:['Anarchism','Classical Liberalism'],                                    req_ideology:40,enact_weeks:1},
+  judicial_indep: {cat:'Justice',  name:'Judicial Independence',buffs:{stability:8,support:6},  debuffs:{gold:-2},                     govs:['Paperist Democracy','Classical Liberalism','Institutionalism'],        req_ideology:30,enact_weeks:2},
+  inquisition:    {cat:'Justice',  name:'Inquisition',          buffs:{stability:10,manpower:5},debuffs:{support:-8,gold:-4},          govs:['Traditionalist Right','Autocracy'],                                    req_ideology:40,enact_weeks:1},
 
   // ── ENVIRONMENT & LAND ──
-  deforest:       {cat:'Environment',name:'Mass Deforestation', buffs:{supply:14,gold:6},       debuffs:{stability:-4,manpower:-3},    govs:['Third Positionism','Autocracy','Neo-Authoritarianism'],               req_ideology:30,enact_weeks:2},
-  conservation:   {cat:'Environment',name:'Conservation Edict', buffs:{supply:8,stability:6},   debuffs:{gold:-5},                     govs:['Aesthetic Democracy','Anarchism','Post-Modernism'],                   req_ideology:25,enact_weeks:2},
-  irrigation:     {cat:'Environment',name:'Irrigation Projects',buffs:{supply:14,manpower:5},   debuffs:{gold:-6},                     govs:['Institutionalism','Reformatorist Left','Paperist Democracy'],         req_ideology:30,enact_weeks:4},
-  mining_rights:  {cat:'Environment',name:'State Mining Rights',buffs:{gold:12,supply:6},       debuffs:{stability:-3},                govs:['Autocracy','Neo-Authoritarianism','Institutionalism'],                req_ideology:30,enact_weeks:2},
-  coastal_dev:    {cat:'Environment',name:'Coastal Development',buffs:{gold:10,supply:8},       debuffs:{manpower:-4},                 govs:['Classical Liberalism','Paperist Democracy','Institutionalism'],       req_ideology:30,enact_weeks:3},
-  game_reserve:   {cat:'Environment',name:'Royal Game Reserve', buffs:{stability:5,supply:6},   debuffs:{gold:-3},                     govs:['Traditionalist Right','Institutionalism'],                             req_ideology:20,enact_weeks:2},
+  deforest:       {cat:'Environment',name:'Mass Deforestation', buffs:{supply:14,gold:6},       debuffs:{stability:-4,manpower:-3},    govs:['Third Positionism','Autocracy','Neo-Authoritarianism'],               req_ideology:30,enact_weeks:1},
+  conservation:   {cat:'Environment',name:'Conservation Edict', buffs:{supply:8,stability:6},   debuffs:{gold:-5},                     govs:['Aesthetic Democracy','Anarchism','Post-Modernism'],                   req_ideology:25,enact_weeks:1},
+  irrigation:     {cat:'Environment',name:'Irrigation Projects',buffs:{supply:14,manpower:5},   debuffs:{gold:-6},                     govs:['Institutionalism','Reformatorist Left','Paperist Democracy'],         req_ideology:30,enact_weeks:3},
+  mining_rights:  {cat:'Environment',name:'State Mining Rights',buffs:{gold:12,supply:6},       debuffs:{stability:-3},                govs:['Autocracy','Neo-Authoritarianism','Institutionalism'],                req_ideology:30,enact_weeks:1},
+  coastal_dev:    {cat:'Environment',name:'Coastal Development',buffs:{gold:10,supply:8},       debuffs:{manpower:-4},                 govs:['Classical Liberalism','Paperist Democracy','Institutionalism'],       req_ideology:30,enact_weeks:2},
+  game_reserve:   {cat:'Environment',name:'Royal Game Reserve', buffs:{stability:5,supply:6},   debuffs:{gold:-3},                     govs:['Traditionalist Right','Institutionalism'],                             req_ideology:20,enact_weeks:1},
 };
 
 // Pseudo-random number generator (deterministic from seed)

@@ -198,13 +198,15 @@
         </div>
       </div>
 
-      <!-- Party support (HOI4 style) -->
+      <!-- Party support (HOI4-style pie chart) -->
       <div class="sb-party-support-block" id="partySection">
         <div class="sb-ps-header">PARTY SUPPORT</div>
         <div class="sb-ps-body">
-          <div class="sb-ideology-globe-wrap">
-            <img src="ideology_beta.png" alt="" id="ideologyImg" class="sb-ideology-img">
+          <!-- Pie chart canvas -->
+          <div class="sb-pie-wrap">
+            <canvas id="partyPieCanvas" width="100" height="100"></canvas>
           </div>
+          <!-- Party list right -->
           <div class="sb-ps-content">
             <div class="sb-ideology-name" id="sbIdeologyName"></div>
             <div class="sb-ideology-axis" id="sbIdeologyAxis"></div>
@@ -323,6 +325,8 @@
       </span>
     </div>
     <button id="mobSbBtn" onclick="toggleSb()">☰</button>
+    <!-- Sidebar toggle — thin tab at left edge of map -->
+    <button id="sbEdgeBtn" onclick="toggleSbDesktop()" title="Toggle sidebar [S]">◀</button>
     <button id="mobRpBtn" onclick="toggleRp()" style="position:absolute;right:0;top:40px;z-index:200;background:rgba(8,8,20,.9);border:1px solid rgba(0,212,255,.25);color:#00d4ff;font-size:11px;padding:4px 6px;cursor:pointer;display:none">☰</button>
     <canvas id="mc"></canvas>
     <img id="mi" src="FPE_Map.png" crossorigin="anonymous">
