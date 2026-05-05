@@ -543,6 +543,8 @@ async function afterLogin(){
   await loadWorld();
   subscribeRealtime();
   checkMyNation();
+  // Auto-clear any expired cabinet members
+  setTimeout(()=>clearExpiredCabinet(),2000);
   startTickTimer();
 };
 
@@ -785,6 +787,35 @@ async function uploadAsset(file,path){
 
 // ── HOI4 SIDEBAR UPDATE ──────────────────────────────────
 
+// ── MAIN SIDEBAR UPDATE ──────────────────────────────────
+function updateNatUI(){
+  if(!mn) return;
+  const g=id=>document.getElementById(id);
+  // Ghost IDs for legacy compatibility
+  if(g('sbN')) g('sbN').textContent=mn.name;
+  if(g('sbG')) g('sbG').textContent=mn.gov||'';
+  const inc=calcIncome(mn.id);
+  if(g('rG'))   g('rG').textContent=Math.round(mn.gold);
+  if(g('rM'))   g('rM').textContent=Math.round(mn.manpower);
+  if(g('rS'))   g('rS').textContent=Math.round(mn.supply);
+  if(g('rSt'))  g('rSt').textContent=mn.stability+'%';
+  if(g('iG'))   g('iG').textContent='+'+inc.gold+'/hr';
+  if(g('iM'))   g('iM').textContent='+'+inc.mp+'/hr';
+  if(g('iSup')) g('iSup').textContent='+'+inc.sup+'/hr';
+
+  // Show/hide panels
+  const noNat=g('noNat'),polPanel=g('sbPolPanel'),diploPanel=g('sbDiploPanel'),unclPanel=g('sbUnclaimedPanel');
+  if(noNat) noNat.style.display='none';
+  if(polPanel) polPanel.style.display='';
+  if(diploPanel) diploPanel.style.display='none';
+  if(unclPanel) unclPanel.style.display='none';
+
+  updateFlagLeader();
+  updateSbPolPanel();
+  updateTickDisplay();
+  refreshSb();
+}
+
 function updateFlagLeader(){
   if(!mn) return;
   // Sidebar flag banner
@@ -836,23 +867,33 @@ function updatePartySection(){
   if(nameEl){nameEl.textContent=mn.gov||'';nameEl.style.color=govColor;}
   if(axisEl) axisEl.textContent=(govData.axis||'').toUpperCase();
 
-  // Party rows (compact — no bar, just dot+name+pct)
+  // Top 4 parties only (current gov always included if not in top 4)
+  const sorted=Object.entries(ps).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  let top4=sorted.slice(0,4);
+  // Ensure current gov is always shown
+  if(mn.gov && !top4.find(([n])=>n===mn.gov)){
+    const govEntry=sorted.find(([n])=>n===mn.gov);
+    if(govEntry) top4=[govEntry,...top4.slice(0,3)];
+  }
+
   const rowsEl=document.getElementById('sbPartyRows');
   if(rowsEl){
-    const sorted=Object.entries(ps).sort((a,b)=>b[1]-a[1]).slice(0,7);
-    rowsEl.innerHTML=sorted.map(([name,pct])=>{
+    rowsEl.innerHTML=top4.map(([name,pct])=>{
       const g=GOVS[name];const col=g?g.color:'#888';const isCur=name===mn.gov;
       return '<div class="sb-party-row">'
-        +'<div class="sb-party-dot" style="background:'+col+(isCur?';box-shadow:0 0 4px '+col:'')+'"></div>'
-        +'<span class="sb-party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';':'')+'">'+name+'</span>'
+        +'<div class="sb-party-dot" style="background:'+col+(isCur?';box-shadow:0 0 5px '+col+'80':'')+'"></div>'
+        +'<span class="sb-party-name'+(isCur?' cur':'')+'" style="'+(isCur?'color:'+col+';font-weight:bold;':'')+'">'+name+'</span>'
         +'<span class="sb-party-pct" style="color:'+col+'">'+pct+'</span>'
         +'</div>';
     }).join('');
   }
 
-  // Pie chart
+  // Pie chart with tooltip support
   drawPartyPie();
 }
+
+// Store slice data for tooltip
+let _pieSlices=[];
 
 function drawPartyPie(){
   const canvas=document.getElementById('partyPieCanvas');
@@ -868,16 +909,20 @@ function drawPartyPie(){
 
   const total=entries.reduce((s,[,v])=>s+v,0);
   let angle=-Math.PI/2;
+  _pieSlices=[];
 
   entries.forEach(([name,pct])=>{
     const g=GOVS[name];
     const col=g?.color||'#888';
     const isCur=name===mn.gov;
     const sweep=(pct/total)*Math.PI*2;
+    const r=isCur?R:R-1.5;
+
+    _pieSlices.push({name,pct,col,startAngle:angle,sweep,cx,cy,r});
 
     ctx.beginPath();
     ctx.moveTo(cx,cy);
-    ctx.arc(cx,cy,isCur?R:R-1.5,angle,angle+sweep);
+    ctx.arc(cx,cy,r,angle,angle+sweep);
     ctx.closePath();
     ctx.fillStyle=col+(isCur?'ff':'99');
     ctx.fill();
@@ -886,7 +931,6 @@ function drawPartyPie(){
     ctx.stroke();
 
     if(isCur){
-      // Highlight active gov slice
       ctx.beginPath();
       ctx.arc(cx,cy,R,angle,angle+sweep);
       ctx.strokeStyle=col;
@@ -905,6 +949,46 @@ function drawPartyPie(){
   ctx.strokeStyle=GOVS[mn.gov]?.color||'#888';
   ctx.lineWidth=1.5;
   ctx.stroke();
+
+  // Register tooltip listener (once)
+  if(!canvas._pieTooltipBound){
+    canvas._pieTooltipBound=true;
+    canvas.addEventListener('mousemove',pieMouseMove);
+    canvas.addEventListener('mouseleave',()=>{
+      const t=document.getElementById('pieTooltip');
+      if(t) t.style.display='none';
+    });
+  }
+}
+
+function pieMouseMove(e){
+  const canvas=e.currentTarget;
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const tip=document.getElementById('pieTooltip');
+  if(!tip) return;
+
+  let hit=null;
+  for(const s of _pieSlices){
+    const dx=mx-s.cx, dy=my-s.cy;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>s.r||dist<s.r*0.18) continue;
+    let a=Math.atan2(dy,dx);
+    // Normalize angle relative to slice start
+    let rel=a-s.startAngle;
+    if(rel<0) rel+=Math.PI*2;
+    if(rel>=0&&rel<=s.sweep){hit=s;break;}
+  }
+
+  if(hit){
+    tip.style.display='block';
+    tip.style.left=(e.clientX+10)+'px';
+    tip.style.top=(e.clientY-10)+'px';
+    tip.innerHTML='<span style="color:'+hit.col+'">'+hit.name+'</span> <span style="color:rgba(200,232,255,.6)">'+hit.pct+'%</span>';
+    tip.style.borderColor=hit.col+'55';
+  } else {
+    tip.style.display='none';
+  }
 }
 
 
@@ -1564,18 +1648,24 @@ function genCandidates(posKey, week, ns){
   const rng=mkRng(week*997+ns+posKey.split('').reduce((a,c)=>a+c.charCodeAt(0),0));
   const govKeys=Object.keys(GOVS);
   const traitKeys=Object.keys(TRAIT_EFFECTS);
+  const usedNames=new Set();
   return Array.from({length:3},(_,i)=>{
-    const ni=Math.floor(rng()*POLITICIAN_NAMES.length);
+    let ni=Math.floor(rng()*POLITICIAN_NAMES.length);
+    // Guarantee unique name
+    let attempts=0;
+    while(usedNames.has(ni)&&attempts<POLITICIAN_NAMES.length){ni=(ni+1)%POLITICIAN_NAMES.length;attempts++;}
+    usedNames.add(ni);
     const gi=Math.floor(rng()*govKeys.length);
     const ti=Math.floor(rng()*traitKeys.length);
     const ideo=govKeys[gi];
     const traitKey=traitKeys[ti];
     const g=GOVS[ideo]||{color:'#888'};
     const pos=POSITIONS[posKey];
-    const lifeWeeks=pos.lifespan[0]+Math.floor(rng()*(pos.lifespan[1]-pos.lifespan[0]+1));
-    const age=Math.floor(30+rng()*40);
+    const span=Math.max(pos.lifespan[1]-pos.lifespan[0],0);
+    const lifeWeeks=Math.max(1,pos.lifespan[0]+Math.floor(rng()*(span+1)));
+    const age=Math.floor(28+rng()*42);
     return{
-      name:POLITICIAN_NAMES[(ni+i*7)%POLITICIAN_NAMES.length],
+      name:POLITICIAN_NAMES[ni]||'Unknown',
       ideology:ideo, color:g.color,
       age, lifeWeeks, trait:traitKey,
     };
@@ -1640,8 +1730,33 @@ function isPosExpired(posKey){
   const cab=getCabinet();
   const entry=cab[posKey];
   if(!entry)return true; // vacant
-  const expiresWeek=(entry.week_selected||0)+( entry.lifeWeeks||2);
+  const ws=entry.week_selected;
+  const lw=entry.lifeWeeks;
+  // Must have valid week_selected (>0) and lifeWeeks (>=1)
+  if(!ws||ws<=0||!lw||lw<1) return true;
+  const expiresWeek=ws+lw;
   return currentWeek()>=expiresWeek;
+}
+
+// Auto-clear expired politicians from cabinet (call after loading nation)
+async function clearExpiredCabinet(){
+  if(!mn) return;
+  const cab={...getCabinet()};
+  let changed=false;
+  Object.keys(POSITIONS).forEach(posKey=>{
+    const entry=cab[posKey];
+    if(!entry) return;
+    const ws=entry.week_selected;
+    const lw=entry.lifeWeeks;
+    if(!ws||ws<=0||!lw||lw<1||currentWeek()>=ws+lw){
+      delete cab[posKey];
+      changed=true;
+    }
+  });
+  if(changed){
+    await updateLaws({cabinet:cab});
+    mn.cabinet=cab;nations[mn.id]=mn;
+  }
 }
 
 // Render politicians tab — enhanced with trait buffs/debuffs display

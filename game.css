@@ -215,6 +215,7 @@ html,body{height:100%;overflow:hidden;background:#05050a;color:#c8e8ff;font-fami
 .lgsq{width:8px;height:8px;flex-shrink:0;}.lgl{color:rgba(200,232,255,.5);}
 /* TOAST */
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0d0d1a;border:1px solid rgba(0,212,255,.4);padding:6px 14px;font-size:9px;color:#00d4ff;letter-spacing:.08em;z-index:9999;display:none;white-space:nowrap;pointer-events:none;}
+#pieTooltip{position:fixed;display:none;background:#0d0f18;border:1px solid rgba(180,160,100,.3);padding:4px 9px;font-size:8px;font-family:var(--mono);letter-spacing:.06em;color:#dcc87c;z-index:9998;pointer-events:none;white-space:nowrap;box-shadow:2px 2px 8px rgba(0,0,0,.6);}
 #toast.show{display:block;animation:fu .2s ease;}
 @keyframes fu{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 /* MOBILE TOGGLE */
