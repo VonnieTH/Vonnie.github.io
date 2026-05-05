@@ -257,6 +257,12 @@ window.addEventListener('mousemove',e=>{
     if(!dragMoved&&Math.abs(dx)+Math.abs(dy)>5){dragMoved=true;canvas.classList.add('grabbing');}
     if(dragMoved){panX=dragPanX+dx;panY=dragPanY+dy;clampPan();draw();return;}
   }
+  // Hide tooltip if cursor is over any UI element (not the canvas itself)
+  const topEl=document.elementFromPoint(e.clientX,e.clientY);
+  if(!topEl||topEl!==canvas){
+    document.getElementById('tip').style.display='none';
+    return;
+  }
   const r=canvas.getBoundingClientRect();
   const mp=screenToMap(e.clientX-r.left,e.clientY-r.top);
   showTip(e.clientX,e.clientY,mp.x,mp.y);
